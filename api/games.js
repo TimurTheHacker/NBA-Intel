@@ -1,6 +1,6 @@
 // api/games.js
 // Proxies BallDontLie — API key stays server-side.
-// For playoff games, derives Game N, series record, round, and team seeds.
+// For playoff games, derives Game N, series record, and round from the series history.
 
 const bdlFetch = (path) =>
   fetch(`https://api.balldontlie.io/v1${path}`, {
@@ -14,34 +14,7 @@ const ROUND_NAMES = {
   4: 'NBA Finals',
 };
 
-// Cache seeds per season so we don't re-fetch for every playoff game
-const seedCache = {};
-
-async function getSeedsForSeason(season) {
-  if (seedCache[season]) return seedCache[season];
-
-  try {
-    const res = await bdlFetch(`/standings?seasons[]=${season}&per_page=30`);
-    if (!res.ok) return {};
-
-    const data = await res.json();
-    const map = {};
-
-    for (const entry of data.data || []) {
-      // BDL standings entry has team.id and playoff_seed (or conference_rank)
-      const teamId = entry.team?.id;
-      const seed   = entry.playoff_seed ?? entry.conference_rank ?? null;
-      if (teamId && seed != null) map[teamId] = seed;
-    }
-
-    seedCache[season] = map;
-    return map;
-  } catch {
-    return {};
-  }
-}
-
-async function getPlayoffSeriesInfo(game, seedMap) {
+async function getPlayoffSeriesInfo(game) {
   try {
     const { season, home_team, visitor_team, id } = game;
     const url =
@@ -62,7 +35,6 @@ async function getPlayoffSeriesInfo(game, seedMap) {
     const gameNumber = series.findIndex(g => g.id === id);
     if (gameNumber === -1) return {};
 
-    // Series record: count wins before this game
     let homeWins = 0, visitorWins = 0;
     for (let i = 0; i < gameNumber; i++) {
       const g = series[i];
@@ -79,17 +51,15 @@ async function getPlayoffSeriesInfo(game, seedMap) {
     const rawRound    = game.round ?? series[0]?.round ?? null;
     const roundNumber = rawRound
       ? parseInt(rawRound, 10)
-      : deriveRound(season, series[0]?.date);
+      : deriveRoundFromSeason(season, series[0]?.date);
 
     return {
-      playoff_game_number:   gameNumber + 1,
-      playoff_round_number:  roundNumber,
-      playoff_round_name:    ROUND_NAMES[roundNumber] || `Round ${roundNumber}`,
-      series_home_wins:      homeWins,
-      series_visitor_wins:   visitorWins,
-      series_games_played:   gameNumber,
-      home_seed:             seedMap[home_team.id]    ?? null,
-      visitor_seed:          seedMap[visitor_team.id] ?? null,
+      playoff_game_number:  gameNumber + 1,
+      playoff_round_number: roundNumber,
+      playoff_round_name:   ROUND_NAMES[roundNumber] || `Round ${roundNumber}`,
+      series_home_wins:     homeWins,
+      series_visitor_wins:  visitorWins,
+      series_games_played:  gameNumber,
     };
   } catch (err) {
     console.error('series info error:', err);
@@ -97,7 +67,7 @@ async function getPlayoffSeriesInfo(game, seedMap) {
   }
 }
 
-function deriveRound(season, firstGameDate) {
+function deriveRoundFromSeason(season, firstGameDate) {
   if (!firstGameDate) return null;
   const month = new Date(firstGameDate).getMonth() + 1;
   if (month <= 4) return 1;
@@ -137,23 +107,16 @@ module.exports = async function handler(req, res) {
       return res.status(bdlRes.status).json({ error: data.error || 'BallDontLie error' });
     }
 
-    const games        = data.data || [];
-    const playoffGames = games.filter(g => g.postseason);
+    const games = data.data || [];
 
-    if (playoffGames.length > 0) {
-      // Collect unique seasons among playoff games, fetch seeds for each
-      const seasons   = [...new Set(playoffGames.map(g => g.season))];
-      const seedMaps  = Object.fromEntries(
-        await Promise.all(seasons.map(async s => [s, await getSeedsForSeason(s)]))
-      );
-
-      await Promise.all(
-        playoffGames.map(async g => {
-          const info = await getPlayoffSeriesInfo(g, seedMaps[g.season] || {});
+    await Promise.all(
+      games
+        .filter(g => g.postseason)
+        .map(async g => {
+          const info = await getPlayoffSeriesInfo(g);
           Object.assign(g, info);
         })
-      );
-    }
+    );
 
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
     return res.status(200).json(data);
