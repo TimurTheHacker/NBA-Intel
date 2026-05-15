@@ -130,6 +130,20 @@ input[type="date"]:focus { border-color: var(--accent); }
 
 .divider { height: 1px; background: var(--border); margin: 20px 0; }
 
+/* ── Top Scorers ── */
+.scorers-section { margin-bottom: 20px; }
+.scorers-header { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.scorers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.scorers-team { background: var(--surface2); border-radius: 8px; padding: 12px 14px; }
+.scorers-team-name { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted2); margin-bottom: 8px; }
+.scorer-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.scorer-row:last-child { border-bottom: none; padding-bottom: 0; }
+.scorer-name { font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.scorer-stats { display: flex; gap: 8px; flex-shrink: 0; }
+.scorer-stat { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted2); }
+.scorer-stat span { color: var(--accent); font-weight: 600; }
+@media (max-width: 520px) { .scorers-grid { grid-template-columns: 1fr; } }
+
 .analysis-text { font-size: 15px; line-height: 1.8; color: var(--text); white-space: pre-wrap; }
 .analysis-text.streaming::after { content: '▋'; color: var(--accent); animation: blink 0.65s step-start infinite; }
 @keyframes blink { 50% { opacity: 0; } }
@@ -203,6 +217,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     </div>
     <div class="score-summary" id="scoreSummary"></div>
     <div class="divider" id="analysisDivider" style="display:none"></div>
+    <div class="scorers-section" id="scorersSection" style="display:none"></div>
     <div class="analysis-text" id="analysisText"></div>
   </div>
 
@@ -376,6 +391,36 @@ function buildCard(g) {
   return card;
 }
 
+function renderScorers(topScorers, game) {
+  const el = document.getElementById('scorersSection');
+  if (!topScorers || (!topScorers.home.length && !topScorers.visitor.length)) {
+    el.style.display = 'none';
+    return;
+  }
+
+  const teamCol = (players, teamName) => {
+    if (!players || !players.length) return '';
+    const rows = players.map((p, i) => `
+      <div class="scorer-row">
+        <div class="scorer-name">${i === 0 ? '⭐ ' : ''}${p.name}</div>
+        <div class="scorer-stats">
+          <div class="scorer-stat"><span>${p.pts}</span> pts</div>
+          <div class="scorer-stat"><span>${p.reb}</span> reb</div>
+          <div class="scorer-stat"><span>${p.ast}</span> ast</div>
+        </div>
+      </div>`).join('');
+    return `<div class="scorers-team"><div class="scorers-team-name">${teamName}</div>${rows}</div>`;
+  };
+
+  const visitorCol = teamCol(topScorers.visitor, game.visitor_team.full_name);
+  const homeCol    = teamCol(topScorers.home,    game.home_team.full_name);
+
+  el.innerHTML = `
+    <div class="scorers-header">Top Scorers</div>
+    <div class="scorers-grid">${visitorCol}${homeCol}</div>`;
+  el.style.display = '';
+}
+
 async function analyzeGame(gameId) {
   const game = games.find(g => g.id === gameId);
   if (!game) return;
@@ -427,6 +472,9 @@ async function analyzeGame(gameId) {
     if (game.playoff_game_number)  parts.push(`Game ${game.playoff_game_number}`);
     if (parts.length) gameTitle += ` — ${parts.join(', ')}`;
   }
+
+  // Render top scorers
+  renderScorers(game.top_scorers || null, game);
 
   title.textContent = gameTitle;
   meta.textContent  = `${formatDate(game.date)} · Generating ${summaryLen} analysis…`;
@@ -492,6 +540,7 @@ async function analyzeGame(gameId) {
 
 function hideAnalysis() {
   document.getElementById('analysisPanel').classList.remove('show');
+  document.getElementById('scorersSection').style.display = 'none';
   document.querySelectorAll('.game-card').forEach(c => c.classList.remove('active'));
   activeGameId = null;
 }
