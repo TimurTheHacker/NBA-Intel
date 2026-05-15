@@ -98,8 +98,10 @@ input[type="date"]:focus { border-color: var(--accent); }
 .game-card.active { border-color: var(--accent); background: var(--accent-dim); }
 .game-card.active::after { background: var(--accent); }
 
-.teams { flex: 1; display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; min-width: 0; }
-.team { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.teams { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.team { flex: 1; overflow: hidden; }
+.team-abbr { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.team-seed { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 1px; letter-spacing: 0.3px; }
 .team.home { text-align: right; }
 
 .scoreboard { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 1px; color: var(--accent); display: flex; align-items: center; gap: 6px; min-width: 70px; justify-content: center; flex-shrink: 0; }
@@ -378,11 +380,17 @@ function buildCard(g) {
 
   card.innerHTML = `
     <div class="teams">
-      <div class="team">${g.visitor_team.abbreviation}</div>
+      <div class="team">
+        <div class="team-abbr">${g.visitor_team.abbreviation}</div>
+        ${g.visitor_seed != null ? `<div class="team-seed">#${g.visitor_seed} seed</div>` : ''}
+      </div>
       <div class="scoreboard">
         <span>${vs}</span><span class="score-dot">·</span><span>${hs}</span>
       </div>
-      <div class="team home">${g.home_team.abbreviation}</div>
+      <div class="team home">
+        <div class="team-abbr">${g.home_team.abbreviation}</div>
+        ${g.home_seed != null ? `<div class="team-seed">#${g.home_seed} seed</div>` : ''}
+      </div>
     </div>
     <div class="game-info">
       <div class="badges">
