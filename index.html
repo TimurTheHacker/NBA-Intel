@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBA Intel</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+:root {
+  --bg: #08080e;
+  --surface: #0f0f18;
+  --surface2: #161620;
+  --border: #1f1f30;
+  --border2: #2a2a3f;
+  --accent: #f5a623;
+  --accent-dim: rgba(245,166,35,0.12);
+  --red: #e8504a;
+  --green: #4ecb71;
+  --text: #ddddf0;
+  --muted: #5c5c7a;
+  --muted2: #8888a8;
+  --r: 12px;
+}
+ 
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+ 
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 40% at 15% 0%, rgba(245,166,35,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 35% at 85% 100%, rgba(232,80,74,0.05) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+ 
+.wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 20px;
+  position: relative;
+  z-index: 1;
+}
+ 
+/* ── Header ── */
+header {
+  padding: 44px 0 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 36px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+ 
+.logo-mark {
+  width: 46px; height: 46px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+ 
+.logo-text h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  letter-spacing: 3px;
+  line-height: 1;
+}
+.logo-text h1 em { color: var(--accent); font-style: normal; }
+.logo-text p { font-size: 12px; color: var(--muted2); margin-top: 3px; letter-spacing: 0.3px; }
+ 
+/* ── Controls ── */
+.controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 24px;
+  margin-bottom: 28px;
+}
+ 
+.controls-title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+ 
+.controls-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+ 
+.field { flex: 1; min-width: 140px; }
+ 
+label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+ 
+input[type="date"] {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 9px 13px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  color-scheme: dark;
+}
+input[type="date"]:focus { border-color: var(--accent); }
+ 
+.btn {
+  height: 38px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.18s;
+  padding: 0 18px;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+.btn-ghost {
+  background: transparent;
+  color: var(--muted2);
+  border: 1px solid var(--border2);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+ 
+/* Range toggle */
+.range-toggle {
+  display: flex;
+  gap: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  overflow: hidden;
+  height: 38px;
+  align-self: flex-end;
+}
+.range-tab {
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--muted);
+  border: none;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+}
+.range-tab.active { background: var(--accent); color: #000; }
+ 
+/* ── Section label ── */
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+ 
+/* ── Game Cards ── */
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+ 
+.game-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+  overflow: hidden;
+}
+.game-card::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--border2);
+  transition: background 0.2s;
+}
+.game-card:hover { border-color: rgba(245,166,35,0.35); }
+.game-card:hover::after { background: var(--accent); }
+.game-card.active { border-color: var(--accent); background: var(--accent-dim); }
+.game-card.active::after { background: var(--accent); }
+ 
+.teams {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 0;
+}
+.team { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team.home { text-align: right; }
+ 
+.scoreboard {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 70px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.score-dot { color: var(--border2); font-size: 16px; }
+ 
+.game-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.badge-final { background: rgba(92,92,122,0.25); color: var(--muted2); }
+.badge-live { background: rgba(78,203,113,0.15); color: var(--green); }
+.badge-soon { background: rgba(245,166,35,0.15); color: var(--accent); }
+ 
+.game-date-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+ 
+.analyze-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--muted2);
+  border-radius: 7px;
+  padding: 5px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.analyze-btn:hover, .game-card.active .analyze-btn {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+ 
+/* ── Analysis Panel ── */
+.analysis-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r);
+  padding: 28px 28px 32px;
+  margin-bottom: 40px;
+  display: none;
+  animation: appear 0.25s ease;
+}
+.analysis-panel.show { display: block; }
+ 
+@keyframes appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+ 
+.analysis-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+ 
+.analysis-head-left h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  line-height: 1.1;
+}
+.analysis-head-left p {
+  font-size: 12px;
+  color: var(--muted2);
+  margin-top: 3px;
+  font-family: 'DM Mono', monospace;
+}
+ 
+.score-summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.score-chip {
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 12px 18px;
+  text-align: center;
+  flex: 1;
+  min-width: 80px;
+}
+.score-chip .val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 30px;
+  color: var(--accent);
+  line-height: 1;
+}
+.score-chip .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
+.score-chip .lbl-name { font-size: 11px; color: var(--muted2); margin-top: 1px; }
+ 
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+ 
+.analysis-text {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.analysis-text.streaming::after {
+  content: '▋';
+  color: var(--accent);
+  animation: blink 0.65s step-start infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+ 
+/* ── States ── */
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted2);
+  font-size: 13px;
+  padding: 24px 0;
+}
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+ 
+.error-box {
+  background: rgba(232,80,74,0.09);
+  border: 1px solid rgba(232,80,74,0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--red);
+  margin: 8px 0;
+}
+ 
+.empty-state {
+  text-align: center;
+  padding: 64px 20px;
+  color: var(--muted);
+}
+.empty-state .icon { font-size: 44px; margin-bottom: 14px; }
+.empty-state p { font-size: 14px; }
+ 
+/* ── Responsive ── */
+@media (max-width: 560px) {
+  .teams { font-size: 12px; }
+  .scoreboard { font-size: 20px; min-width: 58px; }
+  .score-summary { gap: 8px; }
+  .score-chip { padding: 10px 12px; }
+  .analysis-panel { padding: 20px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+ 
+  <header>
+    <div class="logo-mark">🏀</div>
+    <div class="logo-text">
+      <h1>NBA <em>INTEL</em></h1>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude</p>
+    </div>
+  </header>
+ 
+  <!-- Controls -->
+  <div class="controls">
+    <div class="controls-title">Search Games</div>
+    <div class="controls-row" id="controlsRow">
+ 
+      <div class="range-toggle" id="modeToggle">
+        <button class="range-tab active" data-mode="single" onclick="setMode('single')">Single Day</button>
+        <button class="range-tab" data-mode="range" onclick="setMode('range')">Date Range</button>
+      </div>
+ 
+      <!-- Single day -->
+      <div class="field" id="fieldSingle">
+        <label>Date</label>
+        <input type="date" id="singleDate" />
+      </div>
+ 
+      <!-- Range -->
+      <div class="field" id="fieldStart" style="display:none">
+        <label>Start Date</label>
+        <input type="date" id="startDate" />
+      </div>
+      <div class="field" id="fieldEnd" style="display:none">
+        <label>End Date <span style="font-size:10px;color:var(--muted)">(max 30 days)</span></label>
+        <input type="date" id="endDate" />
+      </div>
+ 
+      <button class="btn btn-ghost" onclick="setToday()">Today</button>
+      <button class="btn btn-primary" id="searchBtn" onclick="fetchGames()">Search</button>
+    </div>
+  </div>
+ 
+  <!-- Analysis panel (shown when a game is analyzed) -->
+  <div class="analysis-panel" id="analysisPanel">
+    <div class="analysis-head">
+      <div class="analysis-head-left">
+        <h2 id="analysisTitle">—</h2>
+        <p id="analysisMeta">—</p>
+      </div>
+    </div>
+    <div class="score-summary" id="scoreSummary"></div>
+    <div class="divider" id="analysisDivider" style="display:none"></div>
+    <div class="analysis-text" id="analysisText"></div>
+  </div>
+ 
+  <!-- Games list -->
+  <div id="gamesWrap">
+    <div class="empty-state">
+      <div class="icon">🏀</div>
+      <p>Pick a date above to load games</p>
+    </div>
+  </div>
+ 
+</div>
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let mode = 'single';
+let games = [];
+let activeGameId = null;
+ 
+// ── Init ───────────────────────────────────────────────────────────────────
+(function init() {
+  const today = todayStr();
+  document.getElementById('singleDate').value = today;
+  document.getElementById('startDate').value = today;
+  document.getElementById('endDate').value = today;
+  fetchGames();
+})();
+ 
+// ── Mode toggle ─────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.range-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === m);
+  });
+  document.getElementById('fieldSingle').style.display = m === 'single' ? '' : 'none';
+  document.getElementById('fieldStart').style.display  = m === 'range'  ? '' : 'none';
+  document.getElementById('fieldEnd').style.display    = m === 'range'  ? '' : 'none';
+}
+ 
+function setToday() {
+  const t = todayStr();
+  document.getElementById('singleDate').value = t;
+  document.getElementById('startDate').value  = t;
+  document.getElementById('endDate').value    = t;
+  setMode('single');
+  fetchGames();
+}
+ 
+// ── Fetch games ─────────────────────────────────────────────────────────────
+async function fetchGames() {
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+ 
+  // Hide analysis panel & reset
+  hideAnalysis();
+ 
+  showLoading('gamesWrap', 'Fetching games…');
+ 
+  let url;
+  let label;
+ 
+  try {
+    if (mode === 'single') {
+      const date = document.getElementById('singleDate').value;
+      if (!date) { alert('Select a date.'); return; }
+      url = `/api/games?date=${date}`;
+      label = formatDate(date);
+    } else {
+      const start = document.getElementById('startDate').value;
+      const end   = document.getElementById('endDate').value;
+      if (!start || !end) { alert('Select start and end dates.'); return; }
+      const diff = (new Date(end) - new Date(start)) / 86400000;
+      if (diff < 0) { showError('gamesWrap', 'End date must be after start date.'); return; }
+      if (diff > 30) { showError('gamesWrap', 'Date range cannot exceed 30 days.'); return; }
+      url = `/api/games?start_date=${start}&end_date=${end}`;
+      label = `${formatDate(start)} – ${formatDate(end)}`;
+    }
+ 
+    const res = await fetch(url);
+    const data = await res.json();
+ 
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+ 
+    games = data.data || [];
+    renderGames(games, label);
+  } catch (e) {
+    showError('gamesWrap', `Failed to load games: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Search';
+  }
+}
+ 
+// ── Render games ────────────────────────────────────────────────────────────
+function renderGames(list, label) {
+  const wrap = document.getElementById('gamesWrap');
+ 
+  if (!list.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>No games found for ${label}</p></div>`;
+    return;
+  }
+ 
+  // Sort by date then by status (live first, then scheduled, then final)
+  list.sort((a, b) => {
+    const da = new Date(a.date), db = new Date(b.date);
+    if (da - db !== 0) return da - db;
+    const rank = s => s === 'Final' || s === 'Final/OT' ? 2 : s?.includes('Qtr') ? 0 : 1;
+    return rank(a.status) - rank(b.status);
+  });
+ 
+  wrap.innerHTML = `
+    <div class="section-label">${list.length} game${list.length !== 1 ? 's' : ''} · ${label}</div>
+    <div class="games-list" id="gamesList"></div>`;
+ 
+  const gamesList = document.getElementById('gamesList');
+  list.forEach(g => gamesList.appendChild(buildCard(g)));
+}
+ 
+function buildCard(g) {
+  const card = document.createElement('div');
+  card.className = 'game-card';
+  card.id = `card-${g.id}`;
+ 
+  const { badgeCls, badgeLabel, detail } = statusInfo(g);
+  const hs = g.home_team_score ?? '–';
+  const vs = g.visitor_team_score ?? '–';
+ 
+  // Only show date label in range mode
+  const showDate = mode === 'range';
+ 
+  card.innerHTML = `
+    <div class="teams">
+      <div class="team">${g.visitor_team.abbreviation}</div>
+      <div class="scoreboard">
+        <span>${vs}</span>
+        <span class="score-dot">·</span>
+        <span>${hs}</span>
+      </div>
+      <div class="team home">${g.home_team.abbreviation}</div>
+    </div>
+    <div class="game-info">
+      <span class="badge ${badgeCls}">${badgeLabel}</span>
+      <span class="game-date-label">${showDate ? shortDate(g.date) + ' · ' : ''}${detail}</span>
+    </div>
+    <button class="analyze-btn" onclick="analyzeGame(${g.id})">Analyze ✦</button>`;
+ 
+  return card;
+}
+ 
+// ── Analyze ─────────────────────────────────────────────────────────────────
+async function analyzeGame(gameId) {
+  const game = games.find(g => g.id === gameId);
+  if (!game) return;
+ 
+  // Mark card active
+  document.querySelectorAll('.game-card').forEach(c => c.classList.remove('active'));
+  document.getElementById(`card-${gameId}`)?.classList.add('active');
+  activeGameId = gameId;
+ 
+  const panel  = document.getElementById('analysisPanel');
+  const title  = document.getElementById('analysisTitle');
+  const meta   = document.getElementById('analysisMeta');
+  const scores = document.getElementById('scoreSummary');
+  const divid  = document.getElementById('analysisDivider');
+  const text   = document.getElementById('analysisText');
+ 
+  // Build score chips
+  const hasScores = game.home_team_score != null && game.visitor_team_score != null;
+  if (hasScores) {
+    const diff = Math.abs(game.home_team_score - game.visitor_team_score);
+    const total = game.home_team_score + game.visitor_team_score;
+    scores.innerHTML = `
+      <div class="score-chip">
+        <div class="val">${game.visitor_team_score}</div>
+        <div class="lbl">Away</div>
+        <div class="lbl-name">${game.visitor_team.abbreviation}</div>
+      </div>
+      <div class="score-chip">
+        <div class="val">${diff}</div>
+        <div class="lbl">Margin</div>
+      </div>
+      <div class="score-chip">
+        <div class="val">${game.home_team_score}</div>
+        <div class="lbl">Home</div>
+        <div class="lbl-name">${game.home_team.abbreviation}</div>
+      </div>
+      <div class="score-chip">
+        <div class="val">${total}</div>
+        <div class="lbl">Total Pts</div>
+      </div>`;
+    divid.style.display = '';
+  } else {
+    scores.innerHTML = '';
+    divid.style.display = 'none';
+  }
+ 
+  title.textContent = `${game.visitor_team.full_name} @ ${game.home_team.full_name}`;
+  meta.textContent  = `${formatDate(game.date)} · Generating analysis…`;
+  text.textContent  = '';
+  text.classList.add('streaming');
+ 
+  panel.classList.add('show');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+ 
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ game }),
+    });
+ 
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Error ${res.status}`);
+    }
+ 
+    // Stream SSE
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+ 
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+ 
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop(); // keep incomplete line
+ 
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+            text.textContent += parsed.delta.text;
+          }
+        } catch { /* skip malformed */ }
+      }
+    }
+ 
+    text.classList.remove('streaming');
+    meta.textContent = `${formatDate(game.date)} · ${game.postseason ? 'Playoffs' : 'Regular Season'} · Analysis complete`;
+ 
+  } catch (e) {
+    text.classList.remove('streaming');
+    text.textContent = '';
+    scores.innerHTML = '';
+    divid.style.display = 'none';
+    panel.insertAdjacentHTML('beforeend', `<div class="error-box">Analysis failed: ${e.message}</div>`);
+  }
+}
+ 
+function hideAnalysis() {
+  const panel = document.getElementById('analysisPanel');
+  panel.classList.remove('show');
+  document.querySelectorAll('.game-card').forEach(c => c.classList.remove('active'));
+  activeGameId = null;
+}
+ 
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function statusInfo(g) {
+  const s = g.status || '';
+  if (s === 'Final' || s === 'Final/OT')
+    return { badgeCls: 'badge-final', badgeLabel: s, detail: '' };
+  if (s.includes('Qtr') || s === 'In Progress' || s === 'Halftime')
+    return { badgeCls: 'badge-live', badgeLabel: 'Live', detail: s };
+  return { badgeCls: 'badge-soon', badgeLabel: 'Scheduled', detail: s };
+}
+ 
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+ 
+function formatDate(d) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+  });
+}
+ 
+function shortDate(d) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric'
+  });
+}
+ 
+function showLoading(id, msg) {
+  document.getElementById(id).innerHTML = `
+    <div class="loading-row"><div class="spinner"></div><span>${msg}</span></div>`;
+}
+ 
+function showError(id, msg) {
+  document.getElementById(id).innerHTML = `<div class="error-box">${msg}</div>`;
+}
+</script>
+</body>
+</html>
