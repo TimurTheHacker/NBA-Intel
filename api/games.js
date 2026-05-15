@@ -7,12 +7,60 @@ const bdlFetch = (path) =>
     headers: { Authorization: process.env.BALLDONTLIE_API_KEY },
   });
 
+
 const ROUND_NAMES = {
   1: 'First Round',
   2: 'Conference Semifinals',
   3: 'Conference Finals',
   4: 'NBA Finals',
 };
+
+// Fetch top scorers for a completed/live game. Returns { home: [...], visitor: [...] }
+// Each entry: { name, pts, reb, ast }
+async function getTopScorers(game) {
+  try {
+    // Only fetch if the game has started (has scores)
+    if (game.home_team_score == null && game.visitor_team_score == null) return null;
+
+    const res = await bdlFetch(`/stats?game_ids[]=${game.id}&per_page=100`);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const stats = data.data || [];
+
+    if (!stats.length) return null;
+
+    const homeId    = game.home_team.id;
+    const visitorId = game.visitor_team.id;
+
+    const byTeam = { [homeId]: [], [visitorId]: [] };
+
+    for (const s of stats) {
+      const tid = s.team?.id;
+      if (!byTeam[tid]) continue;
+      if (s.pts == null || s.min == null || s.min === '00' || s.min === '0:00') continue;
+      byTeam[tid].push({
+        name: `${s.player.first_name} ${s.player.last_name}`,
+        pts:  s.pts  ?? 0,
+        reb:  s.reb  ?? 0,
+        ast:  s.ast  ?? 0,
+      });
+    }
+
+    const top = (arr) =>
+      arr
+        .sort((a, b) => b.pts - a.pts)
+        .slice(0, 3);
+
+    return {
+      home:    top(byTeam[homeId]),
+      visitor: top(byTeam[visitorId]),
+    };
+  } catch (err) {
+    console.error('top scorers error:', err);
+    return null;
+  }
+}
 
 async function getPlayoffSeriesInfo(game) {
   try {
@@ -115,6 +163,15 @@ module.exports = async function handler(req, res) {
         .map(async g => {
           const info = await getPlayoffSeriesInfo(g);
           Object.assign(g, info);
+        })
+    );
+
+    // Fetch top scorers for all games that have started, in parallel
+    await Promise.all(
+      games
+        .filter(g => g.home_team_score != null || g.visitor_team_score != null)
+        .map(async g => {
+          g.top_scorers = await getTopScorers(g);
         })
     );
 
