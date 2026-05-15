@@ -63,14 +63,8 @@ input[type="date"] {
 }
 input[type="date"]:focus { border-color: var(--accent); }
 
-/* Segmented toggle */
 .seg-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; overflow: hidden; height: 38px; align-self: flex-end; }
-.seg-tab {
-  padding: 0 14px; font-size: 12px; font-weight: 600; cursor: pointer;
-  color: var(--muted); border: none; background: transparent;
-  font-family: 'DM Sans', sans-serif; transition: all 0.15s;
-  display: flex; align-items: center; white-space: nowrap;
-}
+.seg-tab { padding: 0 14px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--muted); border: none; background: transparent; font-family: 'DM Sans', sans-serif; transition: all 0.15s; display: flex; align-items: center; white-space: nowrap; }
 .seg-tab.active { background: var(--accent); color: #000; }
 
 .btn { height: 38px; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.18s; padding: 0 18px; white-space: nowrap; }
@@ -87,11 +81,7 @@ input[type="date"]:focus { border-color: var(--accent); }
 /* ── Game Cards ── */
 .games-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
 
-.game-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
-  padding: 16px 20px; display: flex; align-items: center; gap: 14px;
-  cursor: pointer; transition: all 0.18s; position: relative; overflow: hidden;
-}
+.game-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 20px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.18s; position: relative; overflow: hidden; }
 .game-card::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--border2); transition: background 0.2s; }
 .game-card:hover { border-color: rgba(245,166,35,0.35); }
 .game-card:hover::after { background: var(--accent); }
@@ -101,7 +91,7 @@ input[type="date"]:focus { border-color: var(--accent); }
 .teams { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .team { flex: 1; overflow: hidden; }
 .team-abbr { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.team-seed { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 1px; letter-spacing: 0.3px; }
+.team-seed { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
 .team.home { text-align: right; }
 
 .scoreboard { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 1px; color: var(--accent); display: flex; align-items: center; gap: 6px; min-width: 70px; justify-content: center; flex-shrink: 0; }
@@ -155,7 +145,6 @@ input[type="date"]:focus { border-color: var(--accent); }
 .empty-state p { font-size: 14px; }
 
 @media (max-width: 600px) {
-  .teams { font-size: 12px; }
   .scoreboard { font-size: 20px; min-width: 58px; }
   .score-summary { gap: 8px; }
   .score-chip { padding: 10px 12px; }
@@ -174,18 +163,13 @@ input[type="date"]:focus { border-color: var(--accent); }
     </div>
   </header>
 
-  <!-- Controls -->
   <div class="controls">
     <div class="controls-title">Search Games</div>
     <div class="controls-row">
-
-      <!-- Date mode toggle -->
       <div class="seg-toggle" id="modeToggle">
         <button class="seg-tab active" data-mode="single" onclick="setMode('single')">Single Day</button>
         <button class="seg-tab" data-mode="range" onclick="setMode('range')">Date Range</button>
       </div>
-
-      <!-- Date inputs -->
       <div class="field" id="fieldSingle">
         <label>Date</label>
         <input type="date" id="singleDate" />
@@ -198,8 +182,6 @@ input[type="date"]:focus { border-color: var(--accent); }
         <label>End Date <span style="font-size:10px;color:var(--muted)">(max 30 days)</span></label>
         <input type="date" id="endDate" />
       </div>
-
-      <!-- Summary length toggle — global setting -->
       <div>
         <label>Summary Length</label>
         <div class="seg-toggle" id="lengthToggle">
@@ -207,13 +189,11 @@ input[type="date"]:focus { border-color: var(--accent); }
           <button class="seg-tab" data-len="long" onclick="setLength('long')">Long</button>
         </div>
       </div>
-
       <button class="btn btn-ghost" onclick="setToday()">Today</button>
       <button class="btn btn-primary" id="searchBtn" onclick="fetchGames()">Search</button>
     </div>
   </div>
 
-  <!-- Analysis panel -->
   <div class="analysis-panel" id="analysisPanel">
     <div class="analysis-head">
       <div class="analysis-head-left">
@@ -226,7 +206,6 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div class="analysis-text" id="analysisText"></div>
   </div>
 
-  <!-- Games list -->
   <div id="gamesWrap">
     <div class="empty-state">
       <div class="icon">🏀</div>
@@ -236,13 +215,11 @@ input[type="date"]:focus { border-color: var(--accent); }
 
 </div>
 <script>
-// ── State ──────────────────────────────────────────────────────────────────
 let mode         = 'single';
 let summaryLen   = 'short';
 let games        = [];
 let activeGameId = null;
 
-// ── Init ───────────────────────────────────────────────────────────────────
 (function init() {
   const today = todayStr();
   document.getElementById('singleDate').value = today;
@@ -251,7 +228,6 @@ let activeGameId = null;
   fetchGames();
 })();
 
-// ── Mode toggle ─────────────────────────────────────────────────────────────
 function setMode(m) {
   mode = m;
   document.querySelectorAll('#modeToggle .seg-tab').forEach(t =>
@@ -261,12 +237,10 @@ function setMode(m) {
   document.getElementById('fieldEnd').style.display    = m === 'range'  ? '' : 'none';
 }
 
-// ── Length toggle ───────────────────────────────────────────────────────────
 function setLength(len) {
   summaryLen = len;
   document.querySelectorAll('#lengthToggle .seg-tab').forEach(t =>
     t.classList.toggle('active', t.dataset.len === len));
-  // Re-run analysis for the currently open game with the new length
   if (activeGameId != null) analyzeGame(activeGameId);
 }
 
@@ -279,7 +253,6 @@ function setToday() {
   fetchGames();
 }
 
-// ── Fetch games ─────────────────────────────────────────────────────────────
 async function fetchGames() {
   const btn = document.getElementById('searchBtn');
   btn.disabled = true;
@@ -319,7 +292,6 @@ async function fetchGames() {
   }
 }
 
-// ── Render games ────────────────────────────────────────────────────────────
 function renderGames(list, label) {
   const wrap = document.getElementById('gamesWrap');
   if (!list.length) {
@@ -352,16 +324,12 @@ function buildCard(g) {
   const vs = g.visitor_team_score ?? '–';
   const showDate = mode === 'range';
 
-  // Playoff badges: round + game number
   let playoffBadges = '';
   if (g.postseason) {
-    if (g.playoff_round_name) {
-      playoffBadges += `<span class="badge-round">${g.playoff_round_name}</span>`;
-    }
+    if (g.playoff_round_name) playoffBadges += `<span class="badge-round">${g.playoff_round_name}</span>`;
     playoffBadges += `<span class="badge-playoff">🏆 Game ${g.playoff_game_number ?? '?'}</span>`;
   }
 
-  // Series record if available
   let seriesLabel = '';
   if (g.postseason && g.series_games_played > 0) {
     const hw = g.series_home_wins ?? 0;
@@ -370,26 +338,28 @@ function buildCard(g) {
       seriesLabel = `Series tied ${hw}–${vw}`;
     } else {
       const leader = hw > vw ? g.home_team.abbreviation : g.visitor_team.abbreviation;
-      const ahead  = Math.max(hw, vw);
-      const behind = Math.min(hw, vw);
-      seriesLabel = `${leader} leads ${ahead}–${behind}`;
+      seriesLabel  = `${leader} leads ${Math.max(hw,vw)}–${Math.min(hw,vw)}`;
     }
   } else if (g.postseason && g.playoff_game_number === 1) {
     seriesLabel = 'Series tied 0–0';
   }
 
+  // Seed labels — only shown for playoff games
+  const vSeed = g.postseason && g.visitor_seed != null ? `<div class="team-seed">#${g.visitor_seed} seed</div>` : '';
+  const hSeed = g.postseason && g.home_seed   != null ? `<div class="team-seed">#${g.home_seed} seed</div>`   : '';
+
   card.innerHTML = `
     <div class="teams">
       <div class="team">
         <div class="team-abbr">${g.visitor_team.abbreviation}</div>
-        ${g.visitor_seed != null ? `<div class="team-seed">#${g.visitor_seed} seed</div>` : ''}
+        ${vSeed}
       </div>
       <div class="scoreboard">
         <span>${vs}</span><span class="score-dot">·</span><span>${hs}</span>
       </div>
       <div class="team home">
         <div class="team-abbr">${g.home_team.abbreviation}</div>
-        ${g.home_seed != null ? `<div class="team-seed">#${g.home_seed} seed</div>` : ''}
+        ${hSeed}
       </div>
     </div>
     <div class="game-info">
@@ -406,7 +376,6 @@ function buildCard(g) {
   return card;
 }
 
-// ── Analyze ─────────────────────────────────────────────────────────────────
 async function analyzeGame(gameId) {
   const game = games.find(g => g.id === gameId);
   if (!game) return;
@@ -422,7 +391,6 @@ async function analyzeGame(gameId) {
   const divid  = document.getElementById('analysisDivider');
   const text   = document.getElementById('analysisText');
 
-  // Score chips
   const hasScores = game.home_team_score != null && game.visitor_team_score != null;
   if (hasScores) {
     const diff  = Math.abs(game.home_team_score - game.visitor_team_score);
@@ -452,12 +420,11 @@ async function analyzeGame(gameId) {
     divid.style.display = 'none';
   }
 
-  // Title with playoff context
   let gameTitle = `${game.visitor_team.full_name} @ ${game.home_team.full_name}`;
   if (game.postseason) {
     const parts = [];
-    if (game.playoff_round_name) parts.push(game.playoff_round_name);
-    if (game.playoff_game_number) parts.push(`Game ${game.playoff_game_number}`);
+    if (game.playoff_round_name)   parts.push(game.playoff_round_name);
+    if (game.playoff_game_number)  parts.push(`Game ${game.playoff_game_number}`);
     if (parts.length) gameTitle += ` — ${parts.join(', ')}`;
   }
 
@@ -465,7 +432,6 @@ async function analyzeGame(gameId) {
   meta.textContent  = `${formatDate(game.date)} · Generating ${summaryLen} analysis…`;
   text.textContent  = '';
   text.classList.add('streaming');
-
   panel.classList.add('show');
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
@@ -500,14 +466,14 @@ async function analyzeGame(gameId) {
           if (p.type === 'content_block_delta' && p.delta?.text) {
             text.textContent += p.delta.text;
           }
-        } catch { /* skip malformed */ }
+        } catch { /* skip */ }
       }
     }
 
     text.classList.remove('streaming');
     const ctxParts = [formatDate(game.date)];
     if (game.postseason) {
-      if (game.playoff_round_name) ctxParts.push(game.playoff_round_name);
+      if (game.playoff_round_name)  ctxParts.push(game.playoff_round_name);
       if (game.playoff_game_number) ctxParts.push(`Game ${game.playoff_game_number}`);
     } else {
       ctxParts.push('Regular Season');
@@ -530,7 +496,6 @@ function hideAnalysis() {
   activeGameId = null;
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
 function statusInfo(g) {
   const s = g.status || '';
   if (s === 'Final' || s === 'Final/OT') return { badgeCls: 'badge-final', badgeLabel: s, detail: '' };
