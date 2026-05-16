@@ -143,6 +143,7 @@ input[type="date"]:focus { border-color: var(--accent); }
 .scorer-stat { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted2); }
 .scorer-stat span { color: var(--accent); font-weight: 600; }
 @media (max-width: 520px) { .scorers-grid { grid-template-columns: 1fr; } }
+.scorers-unavailable { font-size: 12px; color: var(--muted); font-style: italic; padding: 4px 0 8px; }
 
 .analysis-text { font-size: 15px; line-height: 1.8; color: var(--text); white-space: pre-wrap; }
 .analysis-text.streaming::after { content: '▋'; color: var(--accent); animation: blink 0.65s step-start infinite; }
@@ -394,9 +395,23 @@ function buildCard(g) {
 }
 
 function renderScorers(topScorers, game) {
-  const el = document.getElementById('scorersSection');
-  if (!topScorers || (!topScorers.home.length && !topScorers.visitor.length)) {
+  const el      = document.getElementById('scorersSection');
+  const divider = document.getElementById('analysisDivider');
+  const hasScoreChips = game.home_team_score != null && game.visitor_team_score != null;
+
+  // No stats at all (game not started)
+  if (!topScorers && !hasScoreChips) {
     el.style.display = 'none';
+    return;
+  }
+
+  // Stats were fetched but empty or unavailable (live game lag)
+  if (!topScorers || topScorers.unavailable || (!topScorers.home.length && !topScorers.visitor.length)) {
+    el.innerHTML = `
+      <div class="scorers-header">Top Scorers</div>
+      <div class="scorers-unavailable">Stats not yet available — BallDontLie may still be updating live box scores.</div>`;
+    el.style.display = '';
+    if (divider) divider.style.display = '';
     return;
   }
 
@@ -421,8 +436,6 @@ function renderScorers(topScorers, game) {
     <div class="scorers-header">Top Scorers</div>
     <div class="scorers-grid">${visitorCol}${homeCol}</div>`;
   el.style.display = '';
-  // Ensure the divider below scorers is always visible once we have content
-  const divider = document.getElementById('analysisDivider');
   if (divider) divider.style.display = '';
 }
 
