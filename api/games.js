@@ -8,7 +8,7 @@
 //   round         — field often null; we derive from series Game 1 date
 
 const bdlFetch = (path) =>
-  fetch(`https://api.balldontlie.io/v1${path}`, {
+  fetch(`https://api.balldontlie.io/nba/v1${path}`, {
     headers: { Authorization: process.env.BALLDONTLIE_API_KEY },
   });
 
