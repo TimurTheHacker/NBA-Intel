@@ -1,12 +1,10 @@
 // api/games.js
 // Proxies BallDontLie — API key stays server-side.
-// For playoff games, derives Game N, series record, and round from the series history.
 
 const bdlFetch = (path) =>
   fetch(`https://api.balldontlie.io/v1${path}`, {
     headers: { Authorization: process.env.BALLDONTLIE_API_KEY },
   });
-
 
 const ROUND_NAMES = {
   1: 'First Round',
@@ -15,108 +13,65 @@ const ROUND_NAMES = {
   4: 'NBA Finals',
 };
 
-// Fetch top scorers for a completed/live game. Returns { home: [...], visitor: [...] }
-// Each entry: { name, pts, reb, ast }
-async function getTopScorers(game) {
-  try {
-    // Only fetch if the game has started (has scores)
-    if (game.home_team_score == null && game.visitor_team_score == null) return null;
-
-    const res = await bdlFetch(`/stats?game_ids[]=${game.id}&per_page=100`);
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    const stats = data.data || [];
-
-    if (!stats.length) return null;
-
-    const homeId    = game.home_team.id;
-    const visitorId = game.visitor_team.id;
-
-    const byTeam = { [homeId]: [], [visitorId]: [] };
-
-    for (const s of stats) {
-      const tid = s.team?.id;
-      if (!byTeam[tid]) continue;
-      if (s.pts == null || s.min == null || s.min === '00' || s.min === '0:00') continue;
-      byTeam[tid].push({
-        name: `${s.player.first_name} ${s.player.last_name}`,
-        pts:  s.pts  ?? 0,
-        reb:  s.reb  ?? 0,
-        ast:  s.ast  ?? 0,
-      });
-    }
-
-    const top = (arr) =>
-      arr
-        .sort((a, b) => b.pts - a.pts)
-        .slice(0, 3);
-
-    return {
-      home:    top(byTeam[homeId]),
-      visitor: top(byTeam[visitorId]),
-    };
-  } catch (err) {
-    console.error('top scorers error:', err);
-    return null;
-  }
+// Derive playoff round from the calendar date of Game 1 of the series.
+// This is more reliable than BDL's round field which is often null.
+function deriveRound(game1Date) {
+  if (!game1Date) return null;
+  const d = new Date(game1Date);
+  const month = d.getMonth() + 1; // 1-indexed
+  const day   = d.getDate();
+  // First Round: mid-April to mid-May
+  if (month === 4) return 1;
+  if (month === 5 && day <= 20) return 2;
+  if (month === 5 && day > 20)  return 3;
+  if (month === 6) return 4; // NBA Finals
+  return 1; // safe fallback
 }
 
 async function getPlayoffSeriesInfo(game) {
   try {
-    const { season, home_team, visitor_team, id } = game;
+    const { season, home_team, visitor_team, id, date: gameDate } = game;
 
-    // Helper: fetch all games between these two teams in this season, with or without postseason flag
-    async function fetchSeries(postseasonOnly) {
-      const params = new URLSearchParams({
-        per_page: '100',
-        'seasons[]': season,
-        'team_ids[]': home_team.id,
-      });
-      params.append('team_ids[]', visitor_team.id);
-      if (postseasonOnly) params.append('postseason', 'true');
+    // Query postseason=true only — never mix in regular season games.
+    // Use a broad date window: start of playoffs (Apr 1) to end of season (Jul 31).
+    const params = new URLSearchParams({ per_page: '100' });
+    params.append('seasons[]', season);
+    params.append('team_ids[]', home_team.id);
+    params.append('team_ids[]', visitor_team.id);
+    params.append('postseason', 'true');
 
-      const res = await bdlFetch(`/games?${params.toString()}`);
-      if (!res.ok) return [];
-      const data = await res.json();
+    const res = await bdlFetch(`/games?${params.toString()}`);
+    if (!res.ok) return {};
 
-      // Filter to only matchups between exactly these two teams
-      return (data.data || []).filter(g => {
+    const raw = await res.json();
+
+    // Keep only games between exactly these two teams
+    const series = (raw.data || [])
+      .filter(g => {
         const ids = [g.home_team.id, g.visitor_team.id];
         return ids.includes(home_team.id) && ids.includes(visitor_team.id);
-      });
-    }
-
-    // Try postseason=true first (most reliable), fall back to all games if series is empty
-    let allMatchups = await fetchSeries(true);
-    if (!allMatchups.length) allMatchups = await fetchSeries(false);
-
-    // Only keep games that look like playoffs: postseason flag OR played in typical playoff months (Apr–Jun)
-    const playoffMonths = [3, 4, 5]; // 0-indexed: Apr=3, May=4, Jun=5
-    const series = allMatchups
-      .filter(g => g.postseason || playoffMonths.includes(new Date(g.date).getMonth()))
+      })
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Find this game's position by ID first
-    let gameNumber = series.findIndex(g => g.id === id);
+    // Find this game's 0-based index by ID
+    let idx = series.findIndex(g => g.id === id);
 
-    // Fallback: if this game's ID isn't in the list (BDL postseason flag lag),
-    // count how many series games happened strictly before this game's date
-    if (gameNumber === -1) {
-      const gameDate = new Date(game.date);
-      const before = series.filter(g => new Date(g.date) < gameDate);
-      // Use before.length as the 0-based index (this game would be next)
-      gameNumber = before.length;
+    if (idx === -1) {
+      // BDL hasn't set postseason=true on this game yet.
+      // Count series games with a date strictly before today's game date.
+      const thisDate = new Date(gameDate);
+      idx = series.filter(g => new Date(g.date) < thisDate).length;
+      // If still nothing in series, we can't derive a number reliably — bail.
+      if (series.length === 0) return {};
     }
 
-    // Safety: if we still have nothing, return empty
-    if (gameNumber < 0) return {};
-
+    // Series wins for each team in games BEFORE this one
     let homeWins = 0, visitorWins = 0;
-    for (let i = 0; i < gameNumber; i++) {
+    for (let i = 0; i < idx; i++) {
       const g = series[i];
       if (g.status !== 'Final' && g.status !== 'Final/OT') continue;
-      if (g.home_team_score > g.visitor_team_score) {
+      const homeWon = g.home_team_score > g.visitor_team_score;
+      if (homeWon) {
         if (g.home_team.id === home_team.id) homeWins++;
         else visitorWins++;
       } else {
@@ -125,18 +80,18 @@ async function getPlayoffSeriesInfo(game) {
       }
     }
 
-    const rawRound    = game.round ?? series[0]?.round ?? null;
-    const roundNumber = rawRound
-      ? parseInt(rawRound, 10)
-      : deriveRoundFromSeason(season, series[0]?.date);
+    // Round: prefer BDL's field, fall back to calendar-based derivation from Game 1
+    const rawRound   = game.round ?? series[0]?.round ?? null;
+    const roundNum   = rawRound ? parseInt(rawRound, 10) : deriveRound(series[0]?.date ?? gameDate);
+    const roundName  = ROUND_NAMES[roundNum] ?? null;
 
     return {
-      playoff_game_number:  gameNumber + 1,
-      playoff_round_number: roundNumber,
-      playoff_round_name:   ROUND_NAMES[roundNumber] || `Round ${roundNumber}`,
+      playoff_game_number:  idx + 1,
+      playoff_round_number: roundNum,
+      playoff_round_name:   roundName,
       series_home_wins:     homeWins,
       series_visitor_wins:  visitorWins,
-      series_games_played:  gameNumber,
+      series_games_played:  idx,
     };
   } catch (err) {
     console.error('series info error:', err);
@@ -144,12 +99,45 @@ async function getPlayoffSeriesInfo(game) {
   }
 }
 
-function deriveRoundFromSeason(season, firstGameDate) {
-  if (!firstGameDate) return null;
-  const month = new Date(firstGameDate).getMonth() + 1;
-  if (month <= 4) return 1;
-  if (month === 5) return 2;
-  return 3;
+async function getTopScorers(game) {
+  try {
+    if (game.home_team_score == null && game.visitor_team_score == null) return null;
+
+    const res = await bdlFetch(`/stats?game_ids[]=${game.id}&per_page=100`);
+    if (!res.ok) return null;
+
+    const data  = await res.json();
+    const stats = data.data || [];
+    if (!stats.length) return null;
+
+    const homeId    = game.home_team.id;
+    const visitorId = game.visitor_team.id;
+    const byTeam    = { [homeId]: [], [visitorId]: [] };
+
+    for (const s of stats) {
+      const tid = s.team?.id;
+      if (!byTeam[tid]) continue;
+      // Skip players who didn't play
+      if (s.pts == null || s.min == null || s.min === '00' || s.min === '0:00') continue;
+      byTeam[tid].push({
+        name: `${s.player.first_name} ${s.player.last_name}`,
+        pts:  s.pts ?? 0,
+        reb:  s.reb ?? 0,
+        ast:  s.ast ?? 0,
+      });
+    }
+
+    const top3 = arr => arr.sort((a, b) => b.pts - a.pts).slice(0, 3);
+
+    const home    = top3(byTeam[homeId]);
+    const visitor = top3(byTeam[visitorId]);
+
+    if (!home.length && !visitor.length) return null;
+    return { home, visitor };
+  } catch (err) {
+    console.error('top scorers error:', err);
+    return null;
+  }
 }
 
 module.exports = async function handler(req, res) {
@@ -158,7 +146,6 @@ module.exports = async function handler(req, res) {
   }
 
   const { date, start_date, end_date } = req.query;
-
   if (!date && !(start_date && end_date)) {
     return res.status(400).json({ error: 'Provide ?date=YYYY-MM-DD or ?start_date=&end_date=' });
   }
@@ -167,11 +154,10 @@ module.exports = async function handler(req, res) {
   if (date) {
     params.append('dates[]', date);
   } else {
-    const start    = new Date(start_date);
-    const end      = new Date(end_date);
-    const diffDays = (end - start) / (1000 * 60 * 60 * 24);
-    if (diffDays < 0)  return res.status(400).json({ error: 'end_date must be after start_date' });
-    if (diffDays > 30) return res.status(400).json({ error: 'Date range cannot exceed 30 days' });
+    const s = new Date(start_date), e = new Date(end_date);
+    const diff = (e - s) / 86400000;
+    if (diff < 0)  return res.status(400).json({ error: 'end_date must be after start_date' });
+    if (diff > 30) return res.status(400).json({ error: 'Date range cannot exceed 30 days' });
     params.append('start_date', start_date);
     params.append('end_date', end_date);
   }
@@ -179,30 +165,24 @@ module.exports = async function handler(req, res) {
   try {
     const bdlRes = await bdlFetch(`/games?${params.toString()}`);
     const data   = await bdlRes.json();
-
-    if (!bdlRes.ok) {
-      return res.status(bdlRes.status).json({ error: data.error || 'BallDontLie error' });
-    }
+    if (!bdlRes.ok) return res.status(bdlRes.status).json({ error: data.error || 'BallDontLie error' });
 
     const games = data.data || [];
 
-    await Promise.all(
-      games
+    // Enrich playoff games and fetch top scorers in parallel
+    await Promise.all([
+      ...games
         .filter(g => g.postseason)
         .map(async g => {
           const info = await getPlayoffSeriesInfo(g);
           Object.assign(g, info);
-        })
-    );
-
-    // Fetch top scorers for all games that have started, in parallel
-    await Promise.all(
-      games
+        }),
+      ...games
         .filter(g => g.home_team_score != null || g.visitor_team_score != null)
         .map(async g => {
           g.top_scorers = await getTopScorers(g);
-        })
-    );
+        }),
+    ]);
 
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
     return res.status(200).json(data);
