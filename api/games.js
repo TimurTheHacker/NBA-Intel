@@ -65,23 +65,52 @@ async function getTopScorers(game) {
 async function getPlayoffSeriesInfo(game) {
   try {
     const { season, home_team, visitor_team, id } = game;
-    const url =
-      `/games?seasons[]=${season}&team_ids[]=${home_team.id}&team_ids[]=${visitor_team.id}&postseason=true&per_page=100`;
 
-    const res = await bdlFetch(url);
-    if (!res.ok) return {};
+    // Helper: fetch all games between these two teams in this season, with or without postseason flag
+    async function fetchSeries(postseasonOnly) {
+      const params = new URLSearchParams({
+        per_page: '100',
+        'seasons[]': season,
+        'team_ids[]': home_team.id,
+      });
+      params.append('team_ids[]', visitor_team.id);
+      if (postseasonOnly) params.append('postseason', 'true');
 
-    const data = await res.json();
+      const res = await bdlFetch(`/games?${params.toString()}`);
+      if (!res.ok) return [];
+      const data = await res.json();
 
-    const series = (data.data || [])
-      .filter(g => {
+      // Filter to only matchups between exactly these two teams
+      return (data.data || []).filter(g => {
         const ids = [g.home_team.id, g.visitor_team.id];
         return ids.includes(home_team.id) && ids.includes(visitor_team.id);
-      })
+      });
+    }
+
+    // Try postseason=true first (most reliable), fall back to all games if series is empty
+    let allMatchups = await fetchSeries(true);
+    if (!allMatchups.length) allMatchups = await fetchSeries(false);
+
+    // Only keep games that look like playoffs: postseason flag OR played in typical playoff months (Apr–Jun)
+    const playoffMonths = [3, 4, 5]; // 0-indexed: Apr=3, May=4, Jun=5
+    const series = allMatchups
+      .filter(g => g.postseason || playoffMonths.includes(new Date(g.date).getMonth()))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    const gameNumber = series.findIndex(g => g.id === id);
-    if (gameNumber === -1) return {};
+    // Find this game's position by ID first
+    let gameNumber = series.findIndex(g => g.id === id);
+
+    // Fallback: if this game's ID isn't in the list (BDL postseason flag lag),
+    // count how many series games happened strictly before this game's date
+    if (gameNumber === -1) {
+      const gameDate = new Date(game.date);
+      const before = series.filter(g => new Date(g.date) < gameDate);
+      // Use before.length as the 0-based index (this game would be next)
+      gameNumber = before.length;
+    }
+
+    // Safety: if we still have nothing, return empty
+    if (gameNumber < 0) return {};
 
     let homeWins = 0, visitorWins = 0;
     for (let i = 0; i < gameNumber; i++) {
