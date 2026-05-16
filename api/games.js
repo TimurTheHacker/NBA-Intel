@@ -13,27 +13,49 @@ const ROUND_NAMES = {
   4: 'NBA Finals',
 };
 
-// Derive playoff round from the calendar date of Game 1 of the series.
-// This is more reliable than BDL's round field which is often null.
+// Calendar-based round derivation from the date of Game 1 of the series.
 function deriveRound(game1Date) {
-  if (!game1Date) return null;
-  const d = new Date(game1Date);
-  const month = d.getMonth() + 1; // 1-indexed
-  const day   = d.getDate();
-  // First Round: mid-April to mid-May
-  if (month === 4) return 1;
-  if (month === 5 && day <= 20) return 2;
-  if (month === 5 && day > 20)  return 3;
-  if (month === 6) return 4; // NBA Finals
-  return 1; // safe fallback
+  if (!game1Date) return 1;
+  const month = new Date(game1Date).getMonth() + 1;
+  const day   = new Date(game1Date).getDate();
+  if (month === 4)              return 1;  // April = First Round
+  if (month === 5 && day <= 14) return 2;  // Early May = Conf Semis
+  if (month === 5 && day <= 28) return 3;  // Late May = Conf Finals
+  if (month >= 6)               return 4;  // June = NBA Finals
+  return 1;
 }
 
-async function getPlayoffSeriesInfo(game) {
+// A game is a playoff game if BDL says so OR it falls in playoff months (Apr–Jun)
+function isPlayoff(g) {
+  if (g.postseason) return true;
+  const month = new Date(g.date).getMonth() + 1;
+  return month >= 4 && month <= 6;
+}
+
+// Fetch seeds for a season. Returns { [teamId]: seed }
+async function getSeedsForSeason(season) {
+  try {
+    // BDL v1 standings endpoint
+    const res = await bdlFetch(`/standings?seasons[]=${season}&per_page=30`);
+    if (!res.ok) return {};
+    const data = await res.json();
+    const map = {};
+    for (const entry of (data.data || [])) {
+      const id   = entry.team?.id;
+      // BDL may use playoff_seed or conference_rank depending on season
+      const seed = entry.playoff_seed ?? entry.conference_rank ?? null;
+      if (id && seed != null) map[id] = parseInt(seed, 10);
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+async function getPlayoffSeriesInfo(game, seedMap = {}) {
   try {
     const { season, home_team, visitor_team, id, date: gameDate } = game;
 
-    // Query postseason=true only — never mix in regular season games.
-    // Use a broad date window: start of playoffs (Apr 1) to end of season (Jul 31).
     const params = new URLSearchParams({ per_page: '100' });
     params.append('seasons[]', season);
     params.append('team_ids[]', home_team.id);
@@ -42,7 +64,6 @@ async function getPlayoffSeriesInfo(game) {
 
     const res = await bdlFetch(`/games?${params.toString()}`);
     if (!res.ok) return {};
-
     const raw = await res.json();
 
     // Keep only games between exactly these two teams
@@ -53,25 +74,20 @@ async function getPlayoffSeriesInfo(game) {
       })
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Find this game's 0-based index by ID
+    // Find by ID first; fall back to date-position if BDL hasn't flagged this game yet
     let idx = series.findIndex(g => g.id === id);
-
     if (idx === -1) {
-      // BDL hasn't set postseason=true on this game yet.
-      // Count series games with a date strictly before today's game date.
+      if (series.length === 0) return {};
       const thisDate = new Date(gameDate);
       idx = series.filter(g => new Date(g.date) < thisDate).length;
-      // If still nothing in series, we can't derive a number reliably — bail.
-      if (series.length === 0) return {};
     }
 
-    // Series wins for each team in games BEFORE this one
+    // Count wins for each team in games before this one
     let homeWins = 0, visitorWins = 0;
     for (let i = 0; i < idx; i++) {
       const g = series[i];
       if (g.status !== 'Final' && g.status !== 'Final/OT') continue;
-      const homeWon = g.home_team_score > g.visitor_team_score;
-      if (homeWon) {
+      if (g.home_team_score > g.visitor_team_score) {
         if (g.home_team.id === home_team.id) homeWins++;
         else visitorWins++;
       } else {
@@ -80,10 +96,9 @@ async function getPlayoffSeriesInfo(game) {
       }
     }
 
-    // Round: prefer BDL's field, fall back to calendar-based derivation from Game 1
-    const rawRound   = game.round ?? series[0]?.round ?? null;
-    const roundNum   = rawRound ? parseInt(rawRound, 10) : deriveRound(series[0]?.date ?? gameDate);
-    const roundName  = ROUND_NAMES[roundNum] ?? null;
+    const rawRound  = game.round ?? series[0]?.round ?? null;
+    const roundNum  = rawRound ? parseInt(rawRound, 10) : deriveRound(series[0]?.date ?? gameDate);
+    const roundName = ROUND_NAMES[roundNum] ?? null;
 
     return {
       playoff_game_number:  idx + 1,
@@ -92,6 +107,8 @@ async function getPlayoffSeriesInfo(game) {
       series_home_wins:     homeWins,
       series_visitor_wins:  visitorWins,
       series_games_played:  idx,
+      home_seed:            seedMap[home_team.id]    ?? null,
+      visitor_seed:         seedMap[visitor_team.id] ?? null,
     };
   } catch (err) {
     console.error('series info error:', err);
@@ -108,6 +125,8 @@ async function getTopScorers(game) {
 
     const data  = await res.json();
     const stats = data.data || [];
+
+    // BDL returns an empty array until stats are processed — treat as pending
     if (!stats.length) return null;
 
     const homeId    = game.home_team.id;
@@ -117,26 +136,26 @@ async function getTopScorers(game) {
     for (const s of stats) {
       const tid = s.team?.id;
       if (!byTeam[tid]) continue;
-      // Skip players with no points recorded and no minutes at all
-      // Note: for live games BDL may return min=null, so we only skip if pts is also null
+      // Only skip DNP rows: pts must be non-null AND minutes must not be literally zero
       if (s.pts == null) continue;
-      const min = s.min ?? '';
-      if (min === '00' || min === '0:00') continue;
+      const min = String(s.min ?? '');
+      if (min === '00' || min === '0:00' || min === '0') continue;
       byTeam[tid].push({
         name: `${s.player.first_name} ${s.player.last_name}`,
-        pts:  s.pts ?? 0,
+        pts:  s.pts,
         reb:  s.reb ?? 0,
         ast:  s.ast ?? 0,
       });
     }
 
-    const top3 = arr => arr.sort((a, b) => b.pts - a.pts).slice(0, 3);
+    const top3 = arr => [...arr].sort((a, b) => b.pts - a.pts).slice(0, 3);
 
     const home    = top3(byTeam[homeId]);
     const visitor = top3(byTeam[visitorId]);
 
-    if (!home.length && !visitor.length) return { home: [], visitor: [], unavailable: true };
-    return { home, visitor, unavailable: false };
+    // Both teams empty means BDL has the game row but no player stats yet
+    if (!home.length && !visitor.length) return { home: [], visitor: [], pending: true };
+    return { home, visitor, pending: false };
   } catch (err) {
     console.error('top scorers error:', err);
     return null;
@@ -172,14 +191,21 @@ module.exports = async function handler(req, res) {
 
     const games = data.data || [];
 
-    // Enrich playoff games and fetch top scorers in parallel
+    // Mark games as playoff by date if BDL's postseason flag hasn't caught up
+    games.forEach(g => { if (!g.postseason && isPlayoff(g)) g.postseason = true; });
+
+    // Fetch seeds once per unique season across all playoff games
+    const playoffGames = games.filter(g => g.postseason);
+    const seasons      = [...new Set(playoffGames.map(g => g.season))];
+    const seedMaps     = {};
+    await Promise.all(seasons.map(async s => { seedMaps[s] = await getSeedsForSeason(s); }));
+
+    // Enrich playoff games + fetch top scorers, all in parallel
     await Promise.all([
-      ...games
-        .filter(g => g.postseason)
-        .map(async g => {
-          const info = await getPlayoffSeriesInfo(g);
-          Object.assign(g, info);
-        }),
+      ...playoffGames.map(async g => {
+        const info = await getPlayoffSeriesInfo(g, seedMaps[g.season] ?? {});
+        Object.assign(g, info);
+      }),
       ...games
         .filter(g => g.home_team_score != null || g.visitor_team_score != null)
         .map(async g => {
