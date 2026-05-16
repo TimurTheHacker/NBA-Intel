@@ -131,7 +131,7 @@ input[type="date"]:focus { border-color: var(--accent); }
 .divider { height: 1px; background: var(--border); margin: 20px 0; }
 
 /* ── Top Scorers ── */
-.scorers-section { margin-bottom: 20px; }
+.scorers-section { margin-top: 20px; margin-bottom: 0; }
 .scorers-header { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
 .scorers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .scorers-team { background: var(--surface2); border-radius: 8px; padding: 12px 14px; }
@@ -216,8 +216,8 @@ input[type="date"]:focus { border-color: var(--accent); }
       </div>
     </div>
     <div class="score-summary" id="scoreSummary"></div>
-    <div class="divider" id="analysisDivider" style="display:none"></div>
     <div class="scorers-section" id="scorersSection" style="display:none"></div>
+    <div class="divider" id="analysisDivider" style="display:none"></div>
     <div class="analysis-text" id="analysisText"></div>
   </div>
 
@@ -421,6 +421,9 @@ function renderScorers(topScorers, game) {
     <div class="scorers-header">Top Scorers</div>
     <div class="scorers-grid">${visitorCol}${homeCol}</div>`;
   el.style.display = '';
+  // Ensure the divider below scorers is always visible once we have content
+  const divider = document.getElementById('analysisDivider');
+  if (divider) divider.style.display = '';
 }
 
 async function analyzeGame(gameId) {
@@ -466,12 +469,13 @@ async function analyzeGame(gameId) {
     scores.innerHTML = '';
     divid.style.display = 'none';
   }
+  // Always show divider above analysis text (will be set after scorers render)
 
   let gameTitle = `${game.visitor_team.full_name} @ ${game.home_team.full_name}`;
   if (game.postseason) {
     const parts = [];
     if (game.playoff_round_name)   parts.push(game.playoff_round_name);
-    if (game.playoff_game_number)  parts.push(`Game ${game.playoff_game_number}`);
+    if (game.playoff_game_number != null) parts.push(`Game ${game.playoff_game_number}`);
     if (parts.length) gameTitle += ` — ${parts.join(', ')}`;
   }
 
