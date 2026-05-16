@@ -91,7 +91,18 @@ input[type="date"]:focus { border-color: var(--accent); }
 .teams { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .team { flex: 1; overflow: hidden; }
 .team-abbr { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.team-seed { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+.team-seed {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--purple);
+  background: rgba(167,139,250,0.12);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-top: 3px;
+  letter-spacing: 0.5px;
+}
 .team.home { text-align: right; }
 
 .scoreboard { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 1px; color: var(--accent); display: flex; align-items: center; gap: 6px; min-width: 70px; justify-content: center; flex-shrink: 0; }
@@ -362,9 +373,9 @@ function buildCard(g) {
     seriesLabel = 'Series tied 0–0';
   }
 
-  // Seed labels — only shown for playoff games
-  const vSeed = g.postseason && g.visitor_seed != null ? `<div class="team-seed">#${g.visitor_seed} seed</div>` : '';
-  const hSeed = g.postseason && g.home_seed   != null ? `<div class="team-seed">#${g.home_seed} seed</div>`   : '';
+  // Seed labels — only shown for playoff games when seed data is available
+  const vSeed = g.postseason && g.visitor_seed != null ? `<div class="team-seed">#${g.visitor_seed}</div>` : '';
+  const hSeed = g.postseason && g.home_seed    != null ? `<div class="team-seed">#${g.home_seed}</div>`   : '';
 
   card.innerHTML = `
     <div class="teams">
@@ -406,10 +417,10 @@ function renderScorers(topScorers, game) {
   }
 
   // Stats were fetched but empty or unavailable (live game lag)
-  if (!topScorers || topScorers.unavailable || (!topScorers.home.length && !topScorers.visitor.length)) {
+  if (!topScorers || topScorers.pending || (!topScorers.home.length && !topScorers.visitor.length)) {
     el.innerHTML = `
       <div class="scorers-header">Top Scorers</div>
-      <div class="scorers-unavailable">Stats not yet available — BallDontLie may still be updating live box scores.</div>`;
+      <div class="scorers-unavailable">Player stats not yet available — try again in a few minutes once BallDontLie finishes processing the box score.</div>`;
     el.style.display = '';
     if (divider) divider.style.display = '';
     return;
