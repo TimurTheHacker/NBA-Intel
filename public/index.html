@@ -102,7 +102,7 @@ input[type="date"]:focus { border-color: var(--accent); }
 
 .badge { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; }
 .badge-final  { background: rgba(92,92,122,0.25); color: var(--muted2); }
-.badge-live   { background: rgba(78,203,113,0.15); color: var(--green); }
+.badge-live   { background: rgba(78,203,113,0.15); color: var(--green); letter-spacing: 0.3px; font-size: 10px; }
 .badge-soon   { background: rgba(245,166,35,0.15); color: var(--accent); }
 .badge-playoff { background: rgba(167,139,250,0.15); color: var(--purple); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.3px; }
 .badge-round  { background: rgba(167,139,250,0.08); color: var(--purple); font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; opacity: 0.85; }
@@ -342,7 +342,9 @@ function buildCard(g) {
   let playoffBadges = '';
   if (g.postseason) {
     if (g.playoff_round_name) playoffBadges += `<span class="badge-round">${g.playoff_round_name}</span>`;
-    playoffBadges += `<span class="badge-playoff">🏆 Game ${g.playoff_game_number ?? '?'}</span>`;
+    if (g.playoff_game_number != null) {
+      playoffBadges += `<span class="badge-playoff">🏆 Game ${g.playoff_game_number}</span>`;
+    }
   }
 
   let seriesLabel = '';
@@ -522,7 +524,7 @@ async function analyzeGame(gameId) {
     const ctxParts = [formatDate(game.date)];
     if (game.postseason) {
       if (game.playoff_round_name)  ctxParts.push(game.playoff_round_name);
-      if (game.playoff_game_number) ctxParts.push(`Game ${game.playoff_game_number}`);
+      if (game.playoff_game_number != null) ctxParts.push(`Game ${game.playoff_game_number}`);
     } else {
       ctxParts.push('Regular Season');
     }
@@ -548,11 +550,20 @@ function hideAnalysis() {
 function statusInfo(g) {
   const s = g.status || '';
   if (s === 'Final' || s === 'Final/OT') return { badgeCls: 'badge-final', badgeLabel: s, detail: '' };
-  if (s.includes('Qtr') || s === 'In Progress' || s === 'Halftime') return { badgeCls: 'badge-live', badgeLabel: 'Live', detail: s };
+  // BDL returns live status as e.g. "1st Qtr", "2nd Qtr", "Halftime", "4th Qtr 2:34", "In Progress"
+  if (s.includes('Qtr') || s === 'In Progress' || s === 'Halftime') {
+    // Use the status string itself as the badge label (it's already human-readable)
+    const liveLabel = s === 'In Progress' ? 'Live' : s;
+    return { badgeCls: 'badge-live', badgeLabel: liveLabel, detail: '' };
+  }
+  // Scheduled — status is a time string like "7:30 pm ET"
   return { badgeCls: 'badge-soon', badgeLabel: 'Scheduled', detail: s };
 }
 
-function todayStr() { return new Date().toISOString().split('T')[0]; }
+function todayStr() {
+  // Use Eastern Time (ET) — NBA games are scheduled in ET
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
 
 function formatDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
