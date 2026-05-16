@@ -117,8 +117,11 @@ async function getTopScorers(game) {
     for (const s of stats) {
       const tid = s.team?.id;
       if (!byTeam[tid]) continue;
-      // Skip players who didn't play
-      if (s.pts == null || s.min == null || s.min === '00' || s.min === '0:00') continue;
+      // Skip players with no points recorded and no minutes at all
+      // Note: for live games BDL may return min=null, so we only skip if pts is also null
+      if (s.pts == null) continue;
+      const min = s.min ?? '';
+      if (min === '00' || min === '0:00') continue;
       byTeam[tid].push({
         name: `${s.player.first_name} ${s.player.last_name}`,
         pts:  s.pts ?? 0,
@@ -132,8 +135,8 @@ async function getTopScorers(game) {
     const home    = top3(byTeam[homeId]);
     const visitor = top3(byTeam[visitorId]);
 
-    if (!home.length && !visitor.length) return null;
-    return { home, visitor };
+    if (!home.length && !visitor.length) return { home: [], visitor: [], unavailable: true };
+    return { home, visitor, unavailable: false };
   } catch (err) {
     console.error('top scorers error:', err);
     return null;
