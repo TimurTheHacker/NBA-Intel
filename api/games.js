@@ -20,12 +20,10 @@ const ROUND_NAMES = {
 };
 
 // NBA playoffs run mid-April through mid-June.
-// We use a tighter window than before to avoid false positives in late March preseason.
 function looksLikePlayoff(dateStr) {
   const d     = new Date(dateStr);
-  const month = d.getMonth() + 1; // 1-indexed
+  const month = d.getMonth() + 1;
   const day   = d.getDate();
-  // Mid-April (15th) through June
   if (month === 4 && day >= 13) return true;
   if (month === 5 || month === 6) return true;
   return false;
@@ -36,22 +34,22 @@ function deriveRound(dateStr) {
   if (!dateStr) return 1;
   const month = new Date(dateStr).getMonth() + 1;
   const day   = new Date(dateStr).getDate();
-  if (month === 4)               return 1;  // April  → First Round
-  if (month === 5 && day <= 14)  return 2;  // May 1–14 → Conf Semis
-  if (month === 5 && day <= 28)  return 3;  // May 15–28 → Conf Finals
-  return 4;                                 // June+ → NBA Finals
+  if (month === 4)               return 1;  // April       → First Round
+  if (month === 5 && day <= 14)  return 2;  // May 1–14    → Conf Semis
+  if (month === 5 && day <= 28)  return 3;  // May 15–28   → Conf Finals
+  return 4;                                 // June+       → NBA Finals
 }
 
 // Try to fetch seeds from /standings. Returns {} gracefully if endpoint
 // is unavailable (plan restriction) or returns unexpected data.
 async function getSeedsForSeason(season) {
   try {
-    const res = await bdlFetch(`/standings?seasons[]=${season}&per_page=30`);
-    if (!res.ok) return {};
+    const res  = await bdlFetch(`/standings?seasons[]=${season}&per_page=30`);
     const text = await res.text();
-    // Guard: if BDL returns non-JSON (e.g. "Host not in allowed list"), return empty
+    if (!res.ok) return {};
     if (!text.trim().startsWith('{')) return {};
     const data = JSON.parse(text);
+    console.log('standings status:', res.status, 'keys:', Object.keys(data.data?.[0] || {}));
     const map  = {};
     for (const entry of (data.data || [])) {
       const id   = entry.team?.id;
@@ -74,9 +72,11 @@ async function getPlayoffSeriesInfo(game, seedMap) {
     params.append('team_ids[]', visitor_team.id);
     params.append('postseason', 'true');
 
-    const res = await bdlFetch(`/games?${params.toString()}`);
+    const res  = await bdlFetch(`/games?${params.toString()}`);
     if (!res.ok) return {};
-    const raw = await res.json();
+    const text = await res.text();
+    if (!text.trim().startsWith('{')) return {};
+    const raw  = JSON.parse(text);
 
     // Keep only matchups between exactly these two teams
     const series = (raw.data || [])
@@ -86,10 +86,10 @@ async function getPlayoffSeriesInfo(game, seedMap) {
       })
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Also check: if BDL returned 0 postseason games for this matchup but the
-    // game looks like a playoff game, try fetching without postseason filter
-    // and filtering to playoff-looking dates.
+    // If BDL returned 0 postseason games for this matchup, retry without the
+    // postseason filter and manually keep only playoff-month dates.
     let effectiveSeries = series;
+    let usedFallback    = false;
     if (series.length === 0) {
       const params2 = new URLSearchParams({ per_page: '100' });
       params2.append('seasons[]', season);
@@ -97,25 +97,31 @@ async function getPlayoffSeriesInfo(game, seedMap) {
       params2.append('team_ids[]', visitor_team.id);
       const res2 = await bdlFetch(`/games?${params2.toString()}`);
       if (res2.ok) {
-        const raw2 = await res2.json();
-        effectiveSeries = (raw2.data || [])
-          .filter(g => {
-            const ids = [g.home_team.id, g.visitor_team.id];
-            return ids.includes(home_team.id) && ids.includes(visitor_team.id) && looksLikePlayoff(g.date);
-          })
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
+        const text2 = await res2.text();
+        if (text2.trim().startsWith('{')) {
+          const raw2 = JSON.parse(text2);
+          effectiveSeries = (raw2.data || [])
+            .filter(g => {
+              const ids = [g.home_team.id, g.visitor_team.id];
+              return ids.includes(home_team.id) && ids.includes(visitor_team.id) && looksLikePlayoff(g.date);
+            })
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+          usedFallback = true;
+        }
       }
     }
 
+    console.log('series length:', effectiveSeries.length, 'fallback used:', usedFallback);
+
     if (effectiveSeries.length === 0) return {};
 
-    // Find position by ID, or by date if this game isn't in the list yet
+    // Find position by ID; fall back to counting games strictly before this date
     let idx = effectiveSeries.findIndex(g => g.id === id);
     if (idx === -1) {
       idx = effectiveSeries.filter(g => new Date(g.date) < new Date(gameDate)).length;
     }
 
-    // Count wins before this game
+    // Count wins in games before this one
     let homeWins = 0, visitorWins = 0;
     for (let i = 0; i < idx; i++) {
       const g = effectiveSeries[i];
@@ -156,11 +162,12 @@ async function getTopScorers(game) {
     const res = await bdlFetch(`/stats?game_ids[]=${game.id}&per_page=100`);
     if (!res.ok) return null;
 
-    // Read as text first so a non-JSON response doesn't crash us
     const text = await res.text();
     if (!text.trim().startsWith('{')) return null;
     const data  = JSON.parse(text);
     const stats = data.data || [];
+
+    console.log('stats rows:', stats.length, 'sample:', JSON.stringify(stats[0]));
 
     if (!stats.length) return { home: [], visitor: [], pending: true };
 
@@ -172,22 +179,22 @@ async function getTopScorers(game) {
       const tid = s.team?.id;
       if (byTeam[tid] === undefined) continue;
 
-      // Skip DNPs — played no minutes
-      const minStr = s.min != null ? String(s.min).trim() : '';
-      if (!minStr || minStr === '00' || minStr === '0' || minStr === '0:00') continue;
-
-      // pts === null means stat not recorded (different from 0 pts scored)
-      if (s.pts === null || s.pts === undefined) continue;
+      // Skip DNPs: only when BOTH minutes look like zero/empty AND pts is absent.
+      // A player with min: null but pts: 14 (live game lag) should still appear.
+      const minStr     = s.min != null ? String(s.min).trim() : '';
+      const minIsEmpty = !minStr || minStr === '00' || minStr === '0' || minStr === '0:00';
+      const ptsIsNull  = s.pts == null;
+      if (minIsEmpty && ptsIsNull) continue;
 
       byTeam[tid].push({
         name: `${s.player.first_name} ${s.player.last_name}`,
-        pts:  s.pts,
+        pts:  s.pts ?? 0,
         reb:  s.reb ?? 0,
         ast:  s.ast ?? 0,
       });
     }
 
-    const top3 = arr => [...arr].sort((a, b) => b.pts - a.pts).slice(0, 3);
+    const top3    = arr => [...arr].sort((a, b) => b.pts - a.pts).slice(0, 3);
     const home    = top3(byTeam[homeId]);
     const visitor = top3(byTeam[visitorId]);
 
@@ -222,9 +229,16 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const bdlRes = await bdlFetch(`/games?${params.toString()}`);
-    const data   = await bdlRes.json();
-    if (!bdlRes.ok) return res.status(bdlRes.status).json({ error: data.error || 'BallDontLie error' });
+    const bdlRes  = await bdlFetch(`/games?${params.toString()}`);
+    const bdlText = await bdlRes.text();
+    if (!bdlRes.ok) {
+      const errData = bdlText.trim().startsWith('{') ? JSON.parse(bdlText) : {};
+      return res.status(bdlRes.status).json({ error: errData.error || 'BallDontLie error' });
+    }
+    if (!bdlText.trim().startsWith('{')) {
+      return res.status(502).json({ error: 'Unexpected response from BallDontLie' });
+    }
+    const data = JSON.parse(bdlText);
 
     // Spread into new objects so we can safely mutate
     const games = (data.data || []).map(g => ({ ...g }));
