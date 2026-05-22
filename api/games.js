@@ -135,6 +135,13 @@ async function getPlayoffSeriesInfo(game, seedMap) {
       }
     }
 
+    // If this game is finished, fold its result in so the record is current
+    const isFinal = game.status === 'Final' || game.status === 'Final/OT';
+    if (isFinal && game.home_team_score != null && game.visitor_team_score != null) {
+      if (game.home_team_score > game.visitor_team_score) homeWins++;
+      else visitorWins++;
+    }
+
     const rawRound  = game.round ?? effectiveSeries[0]?.round ?? null;
     const roundNum  = rawRound ? parseInt(rawRound, 10) : deriveRound(effectiveSeries[0]?.date ?? gameDate);
     const roundName = ROUND_NAMES[roundNum] ?? null;
@@ -145,7 +152,8 @@ async function getPlayoffSeriesInfo(game, seedMap) {
       playoff_round_name:   roundName,
       series_home_wins:     homeWins,
       series_visitor_wins:  visitorWins,
-      series_games_played:  idx,
+      series_games_played:  isFinal ? idx + 1 : idx,
+      series_over:          isFinal && (homeWins >= 4 || visitorWins >= 4),
       home_seed:            seedMap?.[home_team.id]    ?? null,
       visitor_seed:         seedMap?.[visitor_team.id] ?? null,
     };

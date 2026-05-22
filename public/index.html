@@ -360,7 +360,12 @@ function buildCard(g) {
   }
 
   let seriesLabel = '';
-  if (g.postseason && g.series_games_played > 0) {
+  if (g.postseason && g.series_over) {
+    const hw = g.series_home_wins ?? 0;
+    const vw = g.series_visitor_wins ?? 0;
+    const winner = hw > vw ? g.home_team.abbreviation : g.visitor_team.abbreviation;
+    seriesLabel = `${winner} wins ${Math.max(hw,vw)}–${Math.min(hw,vw)}`;
+  } else if (g.postseason && g.series_games_played > 0) {
     const hw = g.series_home_wins ?? 0;
     const vw = g.series_visitor_wins ?? 0;
     if (hw === vw) {
