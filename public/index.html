@@ -492,7 +492,7 @@ async function analyzeGame(gameId) {
     const sbarStatus = (gs === 'Final' || gs === 'Final/OT') ? gs
       : (gs.includes('Qtr') || gs === 'Halftime') ? gs
       : gs === 'In Progress' ? 'LIVE'
-      : gs;
+      : fmtGameTime(gs);
     scores.innerHTML = `
       <div class="score-bar">
         <div class="score-bar-side">
@@ -640,7 +640,9 @@ function todayStr() {
 }
 
 function formatDate(d) {
-  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  if (!d) return '';
+  const dateStr = typeof d === 'string' && d.includes('T') ? d.split('T')[0] : d;
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function shortDate(d) {
