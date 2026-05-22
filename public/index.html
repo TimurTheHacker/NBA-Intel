@@ -170,11 +170,25 @@ input[type="date"]:focus { border-color: var(--accent); }
 .empty-state .icon { font-size: 44px; margin-bottom: 14px; }
 .empty-state p { font-size: 14px; }
 
+/* ── Compact Score Bar ── */
+.score-bar { display: flex; align-items: center; background: var(--surface2); border-radius: 10px; padding: 16px 24px; width: 100%; }
+.score-bar-side { flex: 1; display: flex; align-items: center; gap: 10px; }
+.score-bar-side.right { justify-content: flex-end; }
+.sbar-abbr { font-weight: 700; font-size: 14px; color: var(--muted2); font-family: 'DM Mono', monospace; }
+.sbar-score { font-family: 'Bebas Neue', sans-serif; font-size: 46px; color: var(--accent); line-height: 1; }
+.sbar-status { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--muted2); font-family: 'DM Mono', monospace; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; white-space: nowrap; margin: 0 12px; }
+
+/* ── Prediction Chip ── */
+.prediction-chip { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--purple); }
+.pred-pill { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--purple); background: rgba(167,139,250,0.15); border-radius: 4px; padding: 2px 8px; flex-shrink: 0; }
+
 @media (max-width: 600px) {
   .scoreboard { font-size: 20px; min-width: 58px; }
   .score-summary { gap: 8px; }
   .score-chip { padding: 10px 12px; }
   .analysis-panel { padding: 20px; }
+  .sbar-score { font-size: 36px; }
+  .score-bar { padding: 12px 16px; }
 }
 </style>
 </head>
@@ -228,6 +242,7 @@ input[type="date"]:focus { border-color: var(--accent); }
       </div>
     </div>
     <div class="score-summary" id="scoreSummary"></div>
+    <div id="predictionChip" class="prediction-chip" style="display:none"></div>
     <div class="scorers-section" id="scorersSection" style="display:none"></div>
     <div class="divider" id="analysisDivider" style="display:none"></div>
     <div class="analysis-text" id="analysisText"></div>
@@ -471,27 +486,24 @@ async function analyzeGame(gameId) {
   const text   = document.getElementById('analysisText');
 
   const hasScores = game.home_team_score != null && game.visitor_team_score != null;
+  document.getElementById('predictionChip').style.display = 'none';
   if (hasScores) {
-    const diff  = Math.abs(game.home_team_score - game.visitor_team_score);
-    const total = game.home_team_score + game.visitor_team_score;
+    const gs = game.status || '';
+    const sbarStatus = (gs === 'Final' || gs === 'Final/OT') ? gs
+      : (gs.includes('Qtr') || gs === 'Halftime') ? gs
+      : gs === 'In Progress' ? 'LIVE'
+      : gs;
     scores.innerHTML = `
-      <div class="score-chip">
-        <div class="val">${game.visitor_team_score}</div>
-        <div class="lbl">Away</div>
-        <div class="lbl-name">${game.visitor_team.abbreviation}</div>
-      </div>
-      <div class="score-chip">
-        <div class="val">${diff}</div>
-        <div class="lbl">Margin</div>
-      </div>
-      <div class="score-chip">
-        <div class="val">${game.home_team_score}</div>
-        <div class="lbl">Home</div>
-        <div class="lbl-name">${game.home_team.abbreviation}</div>
-      </div>
-      <div class="score-chip">
-        <div class="val">${total}</div>
-        <div class="lbl">Total Pts</div>
+      <div class="score-bar">
+        <div class="score-bar-side">
+          <span class="sbar-abbr">${game.visitor_team.abbreviation}</span>
+          <span class="sbar-score">${game.visitor_team_score}</span>
+        </div>
+        <div class="sbar-status">${sbarStatus}</div>
+        <div class="score-bar-side right">
+          <span class="sbar-score">${game.home_team_score}</span>
+          <span class="sbar-abbr">${game.home_team.abbreviation}</span>
+        </div>
       </div>`;
     divid.style.display = '';
   } else {
@@ -554,6 +566,17 @@ async function analyzeGame(gameId) {
     }
 
     text.classList.remove('streaming');
+    // Extract prediction line if present (pre-game analysis only)
+    {
+      const fullText = text.textContent;
+      const predMatch = fullText.match(/\nPREDICTION:\s*(.+)/i);
+      if (predMatch) {
+        text.textContent = fullText.replace(/\n?PREDICTION:\s*.+/i, '').trim();
+        const chip = document.getElementById('predictionChip');
+        chip.innerHTML = `<span class="pred-pill">AI Prediction</span>${predMatch[1].trim()}`;
+        chip.style.display = 'flex';
+      }
+    }
     const ctxParts = [formatDate(game.date)];
     if (game.postseason) {
       if (game.playoff_round_name)  ctxParts.push(game.playoff_round_name);
@@ -576,6 +599,7 @@ async function analyzeGame(gameId) {
 function hideAnalysis() {
   document.getElementById('analysisPanel').classList.remove('show');
   document.getElementById('scorersSection').style.display = 'none';
+  document.getElementById('predictionChip').style.display = 'none';
   document.querySelectorAll('.game-card').forEach(c => c.classList.remove('active'));
   activeGameId = null;
 }
@@ -590,7 +614,7 @@ function statusInfo(g) {
     return { badgeCls: 'badge-live', badgeLabel: liveLabel, detail: '' };
   }
   // Scheduled — status is a time string like "7:30 pm ET"
-  return { badgeCls: 'badge-soon', badgeLabel: 'Scheduled', detail: s };
+  return { badgeCls: 'badge-soon', badgeLabel: s || 'Scheduled', detail: '' };
 }
 
 function todayStr() {

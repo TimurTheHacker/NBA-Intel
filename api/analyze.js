@@ -70,6 +70,7 @@ export default async function handler(req) {
     : `Scheduled (${game.status})`;
 
   const isComplete = game.status === 'Final' || game.status === 'Final/OT';
+  const isPregame  = statusLabel.startsWith('Scheduled');
 
   let playoffContext = game.postseason ? 'Postseason (playoffs)\n' : 'Regular season\n';
   if (game.postseason) {
@@ -145,7 +146,7 @@ ${isShort
 
 Important: Only reference facts given above and verified web context. Do not invent player stats, team records, or historical claims you aren't certain of.`}
 
-Write in the style of a sharp, confident sports broadcaster.`;
+Write in the style of a sharp, confident sports broadcaster.${isPregame ? '\n\nEnd with a score prediction on its own line formatted exactly as:\nPREDICTION: ' + game.visitor_team.abbreviation + ' 000 – 000 ' + game.home_team.abbreviation + '\n(Replace 000 with your predicted scores — no other text on that line.)' : ''}`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
