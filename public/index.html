@@ -179,8 +179,8 @@ input[type="date"]:focus { border-color: var(--accent); }
 .sbar-status { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--muted2); font-family: 'DM Mono', monospace; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; white-space: nowrap; margin: 0 12px; }
 
 /* ── Prediction Chip ── */
-.prediction-chip { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--purple); }
-.pred-pill { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--purple); background: rgba(167,139,250,0.15); border-radius: 4px; padding: 2px 8px; flex-shrink: 0; }
+.prediction-chip { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); border-radius: 8px; padding: 8px 14px; margin: 0 auto 20px; display: flex; width: fit-content; align-items: center; gap: 8px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--purple); }
+.pred-pill { font-size: 8px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--purple); background: rgba(167,139,250,0.15); border-radius: 4px; padding: 2px 7px; flex-shrink: 0; }
 
 @media (max-width: 600px) {
   .scoreboard { font-size: 20px; min-width: 58px; }
@@ -604,6 +604,23 @@ function hideAnalysis() {
   activeGameId = null;
 }
 
+function fmtGameTime(s) {
+  if (!s) return 'Scheduled';
+  // ISO timestamp like "2026-05-23T00:30:00Z"
+  if (s.includes('T') && (s.endsWith('Z') || s.includes('+'))) {
+    try {
+      const d = new Date(s);
+      if (!isNaN(d)) {
+        return d.toLocaleTimeString('en-US', {
+          timeZone: 'America/New_York',
+          hour: 'numeric', minute: '2-digit', hour12: true,
+        }) + ' ET';
+      }
+    } catch {}
+  }
+  return s;
+}
+
 function statusInfo(g) {
   const s = g.status || '';
   if (s === 'Final' || s === 'Final/OT') return { badgeCls: 'badge-final', badgeLabel: s, detail: '' };
@@ -613,8 +630,8 @@ function statusInfo(g) {
     const liveLabel = s === 'In Progress' ? 'Live' : s;
     return { badgeCls: 'badge-live', badgeLabel: liveLabel, detail: '' };
   }
-  // Scheduled — status is a time string like "7:30 pm ET"
-  return { badgeCls: 'badge-soon', badgeLabel: s || 'Scheduled', detail: '' };
+  // Scheduled — status may be ISO timestamp or pre-formatted time string
+  return { badgeCls: 'badge-soon', badgeLabel: fmtGameTime(s), detail: '' };
 }
 
 function todayStr() {
