@@ -156,7 +156,7 @@ export default async function handler(req) {
   const isShort = length === 'short';
 
   const prompt = `You are an expert NBA analyst.${isPregame
-  ? ` This game has not yet been played. Draw freely on your knowledge of both teams — recent form, key players, injuries, head-to-head history, home-court dynamics, and series momentum — plus the web context below to build a sharp, well-reasoned preview and prediction.`
+  ? ` This game has not yet been played. Rely primarily on the Web context below for current team information — rosters, injuries, recent form, and storylines. Use your own knowledge only for general strategic tendencies and historical matchup patterns; do not state specific current facts (players, venues, records) that aren't backed by the web context.`
   : ` For the GAME DATA below, rely strictly on what is provided — do not invent stats, series results, or outcomes not stated here. Where Web context is present, incorporate real-world details, analyst takes, and public reaction into your analysis.`}
 
 GAME DATA${isPregame ? ' (matchup context — no score yet)' : ' (ground truth — reference these specific numbers, do not substitute)'}:
@@ -178,7 +178,7 @@ ${isShort
 3. Injury/rotation intel from the web context, plus how crowd and home-court shape the outcome
 4. A bold, committed prediction with clear reasoning — pick a winner and explain the margin
 
-Use your knowledge of these teams freely alongside the web context.`
+Ground all specific claims in the web context above.`
     : `Write 3–4 paragraphs covering:
 1. The game narrative based on the score and status above
 2. Playoff series context and what's at stake, using the series record provided
