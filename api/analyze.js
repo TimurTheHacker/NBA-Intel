@@ -6,25 +6,54 @@ export const config = { runtime: 'edge' };
 
 // Fetch recent coverage via Serper (Google Search API).
 // Requires SERPER_API_KEY env var — silently returns '' if absent or on error.
-async function fetchWebContext(game) {
+// For pre-game: runs two parallel searches (matchup preview + injury/form intel).
+// For live/final: single search on the specific game.
+async function fetchWebContext(game, isPregame) {
   const apiKey = process.env.SERPER_API_KEY;
   if (!apiKey) return '';
-  try {
-    const gameYear = game.date?.slice(0, 4) ?? '';
-    let q;
-    if (game.postseason && game.playoff_round_name && game.playoff_game_number != null) {
-      q = `${game.visitor_team.full_name} vs ${game.home_team.full_name} ${game.playoff_round_name} Game ${game.playoff_game_number} ${gameYear} NBA`;
-    } else {
-      q = `${game.visitor_team.full_name} vs ${game.home_team.full_name} NBA ${game.date}`;
-    }
-    const res = await fetch('https://google.serper.dev/search', {
+
+  const serper = (q, num = 5) =>
+    fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q, num: 5 }),
-    });
-    if (!res.ok) return '';
-    const data = await res.json();
-    const snippets = (data.organic || [])
+      body: JSON.stringify({ q, num }),
+    }).then(r => r.ok ? r.json() : null).catch(() => null);
+
+  try {
+    const gameYear = game.date?.slice(0, 4) ?? '';
+    const away = game.visitor_team.full_name;
+    const home = game.home_team.full_name;
+
+    if (isPregame) {
+      // Two parallel searches: game preview + injury/recent-form intel
+      const [preview, injuries] = await Promise.all([
+        serper(
+          game.postseason && game.playoff_round_name && game.playoff_game_number != null
+            ? `${away} vs ${home} ${game.playoff_round_name} Game ${game.playoff_game_number} ${gameYear} NBA preview prediction`
+            : `${away} vs ${home} NBA ${game.date} preview prediction`,
+          5
+        ),
+        serper(`${away} ${home} NBA injury report lineup ${gameYear}`, 4),
+      ]);
+
+      const toSnippets = (data, limit) =>
+        (data?.organic || []).slice(0, limit).map(r => `- ${r.title}: ${r.snippet}`).filter(Boolean);
+
+      const snippets = [...toSnippets(preview, 3), ...toSnippets(injuries, 3)].join('\n');
+      return snippets
+        ? `\nWeb context (preview articles, injury reports, recent form — use to sharpen your prediction):\n${snippets}`
+        : '';
+    }
+
+    // Live / final: single search on the specific game
+    let q;
+    if (game.postseason && game.playoff_round_name && game.playoff_game_number != null) {
+      q = `${away} vs ${home} ${game.playoff_round_name} Game ${game.playoff_game_number} ${gameYear} NBA`;
+    } else {
+      q = `${away} vs ${home} NBA ${game.date}`;
+    }
+    const data = await serper(q, 5);
+    const snippets = (data?.organic || [])
       .slice(0, 4)
       .map(r => `- ${r.title}: ${r.snippet}`)
       .filter(Boolean)
@@ -122,13 +151,15 @@ export default async function handler(req) {
   }
 
   // Fetch web context in parallel with nothing else — fast Serper call before we stream
-  const webContext = await fetchWebContext(game);
+  const webContext = await fetchWebContext(game, isPregame);
 
   const isShort = length === 'short';
 
-  const prompt = `You are an expert NBA analyst. For the GAME DATA below, rely strictly on what is provided — do not invent stats, series results, or outcomes not stated here. Where Web context is present, incorporate real-world details, analyst takes, and public reaction into your analysis.
+  const prompt = `You are an expert NBA analyst.${isPregame
+  ? ` This game has not yet been played. Draw freely on your knowledge of both teams — recent form, key players, injuries, head-to-head history, home-court dynamics, and series momentum — plus the web context below to build a sharp, well-reasoned preview and prediction.`
+  : ` For the GAME DATA below, rely strictly on what is provided — do not invent stats, series results, or outcomes not stated here. Where Web context is present, incorporate real-world details, analyst takes, and public reaction into your analysis.`}
 
-GAME DATA (ground truth — reference these specific numbers, do not substitute):
+GAME DATA${isPregame ? ' (matchup context — no score yet)' : ' (ground truth — reference these specific numbers, do not substitute)'}:
 - Matchup: ${game.visitor_team.full_name} (away) vs ${game.home_team.full_name} (home)
 - Date: ${game.date}
 - Status: ${statusLabel}
@@ -137,8 +168,18 @@ GAME DATA (ground truth — reference these specific numbers, do not substitute)
 - Context: ${playoffContext}${scorersContext}
 ${webContext}
 ${isShort
-  ? `Write a single sharp paragraph (3–5 sentences) capturing: the result or stakes, one key storyline weaving in current public reaction or coverage where available, and a punchy closing take. Stick strictly to what the data tells you. No headers.`
-  : `Write 3–4 paragraphs covering:
+  ? isPregame
+    ? `Write a single sharp paragraph (3–5 sentences): lead with the central narrative or stakes, name the decisive factor (a matchup edge, a player to watch, momentum, or home-court impact), and close with a punchy take on who controls this and why. No headers.`
+    : `Write a single sharp paragraph (3–5 sentences) capturing: the result or stakes, one key storyline weaving in current public reaction or coverage where available, and a punchy closing take. Stick strictly to what the data tells you. No headers.`
+  : isPregame
+    ? `Write 3–4 paragraphs covering:
+1. The narrative and stakes heading in — momentum, series or season context, what each team needs
+2. The decisive matchup or X-factor — which side has the edge and the specific reason why
+3. Injury/rotation intel from the web context, plus how crowd and home-court shape the outcome
+4. A bold, committed prediction with clear reasoning — pick a winner and explain the margin
+
+Use your knowledge of these teams freely alongside the web context.`
+    : `Write 3–4 paragraphs covering:
 1. The game narrative based on the score and status above
 2. Playoff series context and what's at stake, using the series record provided
 3. What this result means for each team going forward, incorporating relevant public reaction or analyst takes from the web context
@@ -146,7 +187,7 @@ ${isShort
 
 Important: Only reference facts given above and verified web context. Do not invent player stats, team records, or historical claims you aren't certain of.`}
 
-Write in the style of a sharp, confident sports broadcaster.${isPregame ? '\n\nEnd with a score prediction on its own line formatted exactly as:\nPREDICTION: ' + game.visitor_team.abbreviation + ' 000 – 000 ' + game.home_team.abbreviation + '\n(Replace 000 with your predicted scores — no other text on that line.)' : ''}`;
+Write in the style of a sharp, confident sports broadcaster.${isPregame ? '\n\nEnd with a score prediction on its own line formatted exactly as:\nPREDICTION: ' + game.visitor_team.abbreviation + ' 000 – 000 ' + game.home_team.abbreviation + '\nLet the margin reflect the actual matchup — a lopsided game should look lopsided, a tight series should be closer. No other text on that line.' : ''}`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
