@@ -170,6 +170,13 @@ input[type="date"]:focus { border-color: var(--accent); }
 .empty-state .icon { font-size: 44px; margin-bottom: 14px; }
 .empty-state p { font-size: 14px; }
 
+/* ── Storylines ── */
+.storylines-wrap { margin-top: 36px; margin-bottom: 48px; }
+.btn-storylines { background: rgba(78,203,113,0.1); border: 1px solid rgba(78,203,113,0.3); color: var(--green); border-radius: 8px; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; letter-spacing: 0.3px; }
+.btn-storylines:hover { background: rgba(78,203,113,0.2); border-color: var(--green); }
+.btn-storylines:disabled { opacity: 0.4; cursor: not-allowed; }
+.storylines-panel { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--green); border-radius: var(--r); padding: 24px 28px; margin-top: 14px; animation: appear 0.25s ease; }
+
 /* ── Compact Score Bar ── */
 .score-bar { display: flex; align-items: center; background: var(--surface2); border-radius: 10px; padding: 16px 24px; width: 100%; }
 .score-bar-side { flex: 1; display: flex; align-items: center; gap: 10px; }
@@ -252,6 +259,14 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div class="empty-state">
       <div class="icon">🏀</div>
       <p>Pick a date above to load games</p>
+    </div>
+  </div>
+
+  <div class="storylines-wrap">
+    <div class="section-label">Storylines</div>
+    <button class="btn-storylines" id="storylinesBtn" onclick="loadStorylines()">What's happening in the NBA right now?</button>
+    <div class="storylines-panel" id="storylinesPanel" style="display:none">
+      <div class="analysis-text" id="storylinesText"></div>
     </div>
   </div>
 
@@ -647,6 +662,64 @@ function formatDate(d) {
 
 function shortDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+async function loadStorylines() {
+  const btn   = document.getElementById('storylinesBtn');
+  const panel = document.getElementById('storylinesPanel');
+  const text  = document.getElementById('storylinesText');
+
+  btn.disabled    = true;
+  btn.textContent = 'Loading…';
+  panel.style.display = '';
+  text.textContent = '';
+  text.classList.add('streaming');
+
+  try {
+    const res = await fetch('/api/storylines', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Error ${res.status}`);
+    }
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try {
+          const p = JSON.parse(raw);
+          if (p.type === 'content_block_delta' && p.delta?.text) {
+            text.textContent += p.delta.text;
+          }
+        } catch { /* skip */ }
+      }
+    }
+
+    text.classList.remove('streaming');
+    btn.textContent = '↺ Refresh';
+  } catch (e) {
+    text.classList.remove('streaming');
+    text.textContent = '';
+    panel.insertAdjacentHTML('beforeend', `<div class="error-box">Failed to load storylines: ${e.message}</div>`);
+    btn.textContent = 'Retry';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function showLoading(id, msg) {
