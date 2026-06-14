@@ -40,7 +40,7 @@ export default async function handler(req) {
   const prompt = `You are a sharp NBA insider. Based on the current news below, produce a structured storylines briefing in EXACTLY this format — no deviations, no extra headers:
 
 MAIN
-[One paragraph of 5–8 sentences about the single biggest NBA storyline right now — the thing dominating every conversation. Be specific, opinionated, and grounded in the news.]
+[One paragraph of 5–6 sentences about the single biggest NBA storyline right now — the thing dominating every conversation. Be specific, opinionated, and grounded in the news.]
 
 SIDE: [Short punchy title]
 [One paragraph of 4–6 sentences about this secondary storyline.]
