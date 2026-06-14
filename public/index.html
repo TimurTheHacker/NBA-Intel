@@ -176,6 +176,16 @@ input[type="date"]:focus { border-color: var(--accent); }
 .btn-storylines:hover { background: rgba(78,203,113,0.2); border-color: var(--green); }
 .btn-storylines:disabled { opacity: 0.4; cursor: not-allowed; }
 .storylines-panel { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--green); border-radius: var(--r); padding: 24px 28px; margin-top: 14px; animation: appear 0.25s ease; }
+.storylines-main { font-size: 15px; line-height: 1.8; color: var(--text); margin-bottom: 22px; }
+.storylines-secondaries { border-top: 1px solid var(--border); }
+.storyline-item { border-bottom: 1px solid var(--border); }
+.storyline-toggle { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted2); transition: color 0.15s; user-select: none; gap: 12px; }
+.storyline-toggle:hover { color: var(--text); }
+.storyline-item.open .storyline-toggle { color: var(--green); }
+.storyline-chevron { font-size: 9px; flex-shrink: 0; transition: transform 0.2s; display: inline-block; }
+.storyline-item.open .storyline-chevron { transform: rotate(90deg); }
+.storyline-body { font-size: 14px; line-height: 1.75; color: var(--muted2); padding-bottom: 14px; display: none; }
+.storyline-item.open .storyline-body { display: block; }
 
 /* ── Compact Score Bar ── */
 .score-bar { display: flex; align-items: center; background: var(--surface2); border-radius: 10px; padding: 16px 24px; width: 100%; }
@@ -664,16 +674,66 @@ function shortDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function parseStorylines(raw) {
+  const mainMatch = raw.match(/^MAIN\s*\n([\s\S]+?)(?=\nSIDE:|$)/m);
+  const sideMatches = [...raw.matchAll(/\nSIDE:\s*([^\n]+)\n([\s\S]+?)(?=\nSIDE:|$)/g)];
+  return {
+    main:  mainMatch ? mainMatch[1].trim() : raw.trim(),
+    sides: sideMatches.map(m => ({ title: m[1].trim(), body: m[2].trim() })),
+  };
+}
+
+function renderStorylines(parsed) {
+  const panel = document.getElementById('storylinesPanel');
+  panel.innerHTML = '';
+
+  const mainEl = document.createElement('div');
+  mainEl.className = 'storylines-main';
+  mainEl.textContent = parsed.main;
+  panel.appendChild(mainEl);
+
+  if (!parsed.sides.length) return;
+
+  const secEl = document.createElement('div');
+  secEl.className = 'storylines-secondaries';
+
+  parsed.sides.forEach((side, i) => {
+    const item = document.createElement('div');
+    item.className = 'storyline-item';
+
+    const toggle = document.createElement('div');
+    toggle.className = 'storyline-toggle';
+    toggle.onclick = () => item.classList.toggle('open');
+
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = side.title;
+    const chevron = document.createElement('span');
+    chevron.className = 'storyline-chevron';
+    chevron.textContent = '▶';
+
+    toggle.appendChild(titleSpan);
+    toggle.appendChild(chevron);
+
+    const body = document.createElement('div');
+    body.className = 'storyline-body';
+    body.textContent = side.body;
+
+    item.appendChild(toggle);
+    item.appendChild(body);
+    secEl.appendChild(item);
+  });
+
+  panel.appendChild(secEl);
+}
+
 async function loadStorylines() {
   const btn   = document.getElementById('storylinesBtn');
   const panel = document.getElementById('storylinesPanel');
-  const text  = document.getElementById('storylinesText');
 
   btn.disabled    = true;
   btn.textContent = 'Loading…';
   panel.style.display = '';
-  text.textContent = '';
-  text.classList.add('streaming');
+  panel.innerHTML = '<div class="loading-row"><div class="spinner"></div><span>Generating storylines…</span></div>';
 
   try {
     const res = await fetch('/api/storylines', {
@@ -689,7 +749,7 @@ async function loadStorylines() {
 
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
-    let buf = '';
+    let buf = '', fullText = '';
 
     while (true) {
       const { done, value } = await reader.read();
@@ -703,19 +763,15 @@ async function loadStorylines() {
         if (raw === '[DONE]') continue;
         try {
           const p = JSON.parse(raw);
-          if (p.type === 'content_block_delta' && p.delta?.text) {
-            text.textContent += p.delta.text;
-          }
+          if (p.type === 'content_block_delta' && p.delta?.text) fullText += p.delta.text;
         } catch { /* skip */ }
       }
     }
 
-    text.classList.remove('streaming');
+    renderStorylines(parseStorylines(fullText));
     btn.textContent = '↺ Refresh';
   } catch (e) {
-    text.classList.remove('streaming');
-    text.textContent = '';
-    panel.insertAdjacentHTML('beforeend', `<div class="error-box">Failed to load storylines: ${e.message}</div>`);
+    panel.innerHTML = `<div class="error-box">Failed to load storylines: ${e.message}</div>`;
     btn.textContent = 'Retry';
   } finally {
     btn.disabled = false;

@@ -37,11 +37,20 @@ export default async function handler(req) {
     } catch {}
   }
 
-  const prompt = `You are a sharp NBA insider. Based on the current news below, write 4–6 punchy bullet points covering the biggest storylines in the NBA right now. Each bullet: 1–2 sentences, specific and opinionated — not generic. Focus on what actually matters: playoff races, series momentum, breakout performances, injuries, controversies, defining narratives. Start each bullet with "•".
+  const prompt = `You are a sharp NBA insider. Based on the current news below, produce a structured storylines briefing in EXACTLY this format — no deviations, no extra headers:
 
-${webContext || 'No current news available — summarize the most relevant recent NBA activity you are aware of.'}
+MAIN
+[One paragraph of 5–8 sentences about the single biggest NBA storyline right now — the thing dominating every conversation. Be specific, opinionated, and grounded in the news.]
 
-Rely on the news above as your primary source. Write like a sports insider who just read the morning briefing.`;
+SIDE: [Short punchy title]
+[One paragraph of 4–6 sentences about this secondary storyline.]
+
+SIDE: [Short punchy title]
+[One paragraph of 4–6 sentences about this secondary storyline.]
+
+${webContext || 'No current news available — use the most relevant recent NBA context you are aware of.'}
+
+Rules: rely on the news above as your primary source; exactly 2 SIDE items; write like a sharp sports insider, not a press release.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -53,7 +62,7 @@ Rely on the news above as your primary source. Write like a sports insider who j
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 700,
+        max_tokens: 900,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),
