@@ -40,17 +40,17 @@ export default async function handler(req) {
   const prompt = `You are a sharp NBA insider. Based on the current news below, produce a structured storylines briefing in EXACTLY this format — no deviations, no extra headers:
 
 MAIN
-[One paragraph of 5–6 sentences about the single biggest NBA storyline right now — the thing dominating every conversation. Be specific, opinionated, and grounded in the news.]
+[One tight paragraph: 4–5 short sentences, max 90 words. Cover the single biggest NBA storyline dominating every conversation right now. Specific and opinionated.]
 
 SIDE: [Short punchy title]
-[One paragraph of 4–6 sentences about this secondary storyline.]
+[One tight paragraph: 3–4 short sentences, max 70 words.]
 
 SIDE: [Short punchy title]
-[One paragraph of 4–6 sentences about this secondary storyline.]
+[One tight paragraph: 3–4 short sentences, max 70 words.]
 
 ${webContext || 'No current news available — use the most relevant recent NBA context you are aware of.'}
 
-Rules: rely on the news above as your primary source; exactly 2 SIDE items; write like a sharp sports insider, not a press release.`;
+Rules: rely on the news above as your primary source; exactly 2 SIDE items; keep sentences short and punchy — no run-ons; write like a sports insider, not a press release.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -62,7 +62,7 @@ Rules: rely on the news above as your primary source; exactly 2 SIDE items; writ
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 900,
+        max_tokens: 600,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),
