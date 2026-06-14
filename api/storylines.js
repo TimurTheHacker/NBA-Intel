@@ -40,17 +40,17 @@ export default async function handler(req) {
   const prompt = `You are a sharp NBA insider. Based on the current news below, produce a structured storylines briefing in EXACTLY this format — no deviations, no extra headers:
 
 MAIN
-[One tight paragraph: 4–5 short sentences, max 90 words. Cover the single biggest NBA storyline dominating every conversation right now. Specific and opinionated.]
+[One tight paragraph: 4–5 sentences, max 90 words. Cover the single biggest NBA storyline dominating every conversation right now. Specific and opinionated.]
 
 SIDE: [Short punchy title]
-[One tight paragraph: 3–4 short sentences, max 70 words.]
+[One tight paragraph: 3–4 sentences, max 70 words.]
 
 SIDE: [Short punchy title]
-[One tight paragraph: 3–4 short sentences, max 70 words.]
+[One tight paragraph: 3–4 sentences, max 70 words.]
 
 ${webContext || 'No current news available — use the most relevant recent NBA context you are aware of.'}
 
-Rules: rely on the news above as your primary source; exactly 2 SIDE items; keep sentences short and punchy — no run-ons; write like a sports insider, not a press release.`;
+Rules: rely on the news above as your primary source; exactly 2 SIDE items; no run-on sentences; write like a sports insider, not a press release.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
