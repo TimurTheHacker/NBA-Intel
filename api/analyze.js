@@ -198,7 +198,7 @@ Write in the style of a sharp, confident sports broadcaster.${isPregame ? '\n\nE
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: isShort ? 300 : 1024,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
