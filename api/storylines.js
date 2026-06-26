@@ -37,7 +37,7 @@ export default async function handler(req) {
     } catch {}
   }
 
-  const prompt = `You are a sharp NBA insider. Based on the current news below, produce a structured storylines briefing in EXACTLY this format — no deviations, no extra headers:
+  const prompt = `You are a sharp NBA insider. Report the biggest current storylines, prioritizing the most current and biggest news over theories, older news, and stories of less importance. Based on the current news below, produce a structured storylines briefing in EXACTLY this format — no deviations, no extra headers:
 
 MAIN
 [One tight paragraph: 4–5 sentences, max 90 words. Cover the single biggest NBA storyline dominating every conversation right now. Specific and opinionated.]
