@@ -216,7 +216,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.25</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.26</p>
     </div>
   </header>
 
@@ -471,8 +471,11 @@ function renderScorers(topScorers, game) {
     return;
   }
 
-  const teamCol = (players, teamName) => {
+  const teamCol = (players, teamName, abbr) => {
     if (!players || !players.length) return '';
+    const hex = TEAM_COLORS[abbr] || '#1f1f30';
+    const bg  = hexToRgba(hex, 0.16);
+    const brd = hexToRgba(hex, 0.35);
     const rows = players.map((p, i) => `
       <div class="scorer-row">
         <div class="scorer-name">${i === 0 ? '⭐ ' : ''}${p.name}</div>
@@ -482,11 +485,11 @@ function renderScorers(topScorers, game) {
           <div class="scorer-stat"><span>${p.ast}</span> ast</div>
         </div>
       </div>`).join('');
-    return `<div class="scorers-team"><div class="scorers-team-name">${teamName}</div>${rows}</div>`;
+    return `<div class="scorers-team" style="background:${bg};border:1px solid ${brd}"><div class="scorers-team-name">${teamName}</div>${rows}</div>`;
   };
 
-  const visitorCol = teamCol(topScorers.visitor, game.visitor_team.full_name);
-  const homeCol    = teamCol(topScorers.home,    game.home_team.full_name);
+  const visitorCol = teamCol(topScorers.visitor, game.visitor_team.full_name, game.visitor_team.abbreviation);
+  const homeCol    = teamCol(topScorers.home,    game.home_team.full_name,    game.home_team.abbreviation);
 
   el.innerHTML = `
     <div class="scorers-header">Top Scorers</div>
@@ -776,6 +779,21 @@ async function loadStorylines() {
   } finally {
     btn.disabled = false;
   }
+}
+
+const TEAM_COLORS = {
+  ATL:'#E03A3E', BOS:'#007A33', BKN:'#777777', CHA:'#00788C',
+  CHI:'#CE1141', CLE:'#860038', DAL:'#00538C', DEN:'#FEC524',
+  DET:'#C8102E', GSW:'#FFC72C', HOU:'#CE1141', IND:'#FDBB30',
+  LAC:'#C8102E', LAL:'#552583', MEM:'#5D76A9', MIA:'#98002E',
+  MIL:'#00471B', MIN:'#236192', NOP:'#B4975A', NYK:'#F58426',
+  OKC:'#007AC1', ORL:'#0077C0', PHI:'#006BB6', PHX:'#E56020',
+  POR:'#E03A3E', SAC:'#5A2D81', SAS:'#8A8D8F', TOR:'#CE1141',
+  UTA:'#F9A01B', WAS:'#E31837',
+};
+function hexToRgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;
 }
 
 function showLoading(id, msg) {
