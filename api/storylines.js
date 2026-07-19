@@ -24,16 +24,45 @@ export default async function handler(req) {
         body: JSON.stringify({ q, num: 5 }),
       }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-      const [general, postseason] = await Promise.all([
-        serper(`NBA news storylines ${month} ${year}`),
-        serper(`NBA Finals playoffs ${year} latest`),
-      ]);
-
       const toSnippets = (data, limit) =>
         (data?.organic || []).slice(0, limit).map(r => `- ${r.title}: ${r.snippet}`).filter(Boolean);
 
-      const snippets = [...toSnippets(general, 4), ...toSnippets(postseason, 3)].join('\n');
-      if (snippets) webContext = `Current NBA news:\n${snippets}`;
+      // Round 1: broad search to detect what's actually happening right now
+      const initial = await serper(`NBA news ${month} ${year}`);
+      const initialSnippets = toSnippets(initial, 5);
+      const titleText = (initial?.organic || []).map(r => r.title.toLowerCase()).join(' ');
+
+      // Detect which topics appear in the headlines — pick 2 distinct ones for follow-up
+      const TOPICS = [
+        { key: 'trade',      query: `NBA trades free agency ${year}` },
+        { key: 'draft',      query: `NBA draft ${year} picks` },
+        { key: 'final',      query: `NBA Finals ${year} champion analysis` },
+        { key: 'playoff',    query: `NBA playoffs ${year} series results` },
+        { key: 'injur',      query: `NBA injury report ${year}` },
+        { key: 'sign',       query: `NBA player signings contracts ${year}` },
+        { key: 'retir',      query: `NBA player retirement ${year}` },
+        { key: 'coach',      query: `NBA coaching hire fire ${year}` },
+        { key: 'contract',   query: `NBA contract extension ${year}` },
+        { key: 'standing',   query: `NBA standings highlights ${year}` },
+      ];
+      const FALLBACKS = [
+        `NBA player news ${year}`,
+        `NBA standings season highlights ${year}`,
+      ];
+
+      const matched = TOPICS.filter(t => titleText.includes(t.key)).slice(0, 2).map(t => t.query);
+      while (matched.length < 2) matched.push(FALLBACKS[matched.length]);
+
+      // Round 2: two targeted deep-dives in parallel
+      const [follow1, follow2] = await Promise.all(matched.map(q => serper(q)));
+
+      const parts = [
+        initialSnippets.join('\n'),
+        toSnippets(follow1, 3).join('\n'),
+        toSnippets(follow2, 3).join('\n'),
+      ].filter(Boolean);
+
+      if (parts.length) webContext = `Current NBA news:\n\n[Headlines]\n${parts[0]}${parts[1] ? `\n\n[Deep dive — ${matched[0]}]\n${parts[1]}` : ''}${parts[2] ? `\n\n[Deep dive — ${matched[1]}]\n${parts[2]}` : ''}`;
     } catch {}
   }
 
@@ -50,7 +79,7 @@ SIDE: [Short punchy title]
 
 ${webContext || 'No current news available — use the most relevant recent NBA context you are aware of.'}
 
-Rules: rely on the news above as your primary source; exactly 2 SIDE items; no run-on sentences; write like a sports insider, not a press release.`;
+Rules: rely on the news above as your primary source; exactly 2 SIDE items; each item must cover a DIFFERENT topic — never repeat or overlap with another section (e.g. if MAIN is about the Finals, SIDE items must cover different subjects like trades, a player situation, coaching news, etc.); no run-on sentences; write like a polished press release.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
