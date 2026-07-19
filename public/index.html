@@ -187,13 +187,16 @@ input[type="date"]:focus { border-color: var(--accent); }
 .storyline-body { font-size: 14px; line-height: 1.75; color: var(--muted2); padding-bottom: 14px; display: none; }
 .storyline-item.open .storyline-body { display: block; }
 
-/* ── Compact Score Bar ── */
-.score-bar { display: flex; align-items: center; background: var(--surface2); border-radius: 10px; padding: 16px 24px; width: 100%; }
-.score-bar-side { flex: 1; display: flex; align-items: center; gap: 10px; }
-.score-bar-side.right { justify-content: flex-end; }
+/* ── Diagonal Score Split ── */
+.score-split { position: relative; border-radius: 10px; overflow: hidden; width: 100%; background: var(--surface2); }
+.split-bg-left { position: absolute; inset: 0; clip-path: polygon(0 0, 55% 0, 45% 100%, 0 100%); }
+.split-bg-right { position: absolute; inset: 0; clip-path: polygon(55% 0, 100% 0, 100% 100%, 45% 100%); }
+.split-content { position: relative; z-index: 1; display: flex; align-items: center; padding: 16px 24px; }
+.split-team { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .sbar-abbr { font-weight: 700; font-size: 14px; color: var(--muted2); font-family: 'DM Mono', monospace; }
 .sbar-score { font-family: 'Bebas Neue', sans-serif; font-size: 46px; color: var(--accent); line-height: 1; }
 .sbar-status { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--muted2); font-family: 'DM Mono', monospace; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; white-space: nowrap; margin: 0 12px; }
+.winner-arrow { color: var(--accent); font-size: 11px; line-height: 1; }
 
 /* ── Prediction Chip ── */
 .prediction-chip { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); border-radius: 8px; padding: 8px 14px; margin: 0 auto 20px; display: flex; width: fit-content; align-items: center; gap: 8px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--purple); }
@@ -205,7 +208,7 @@ input[type="date"]:focus { border-color: var(--accent); }
   .score-chip { padding: 10px 12px; }
   .analysis-panel { padding: 20px; }
   .sbar-score { font-size: 36px; }
-  .score-bar { padding: 12px 16px; }
+  .split-content { padding: 12px 16px; }
 }
 </style>
 </head>
@@ -216,7 +219,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.26</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.27</p>
     </div>
   </header>
 
@@ -471,11 +474,14 @@ function renderScorers(topScorers, game) {
     return;
   }
 
-  const teamCol = (players, teamName, abbr) => {
+  const sv = parseInt(game.visitor_team_score, 10);
+  const sh = parseInt(game.home_team_score, 10);
+  const vWins = !isNaN(sv) && !isNaN(sh) && sv > sh;
+  const hWins = !isNaN(sv) && !isNaN(sh) && sh > sv;
+
+  const teamCol = (players, teamName, isWinner) => {
     if (!players || !players.length) return '';
-    const hex = TEAM_COLORS[abbr] || '#1f1f30';
-    const bg  = hexToRgba(hex, 0.16);
-    const brd = hexToRgba(hex, 0.35);
+    const brd = isWinner ? 'var(--accent)' : 'var(--border)';
     const rows = players.map((p, i) => `
       <div class="scorer-row">
         <div class="scorer-name">${i === 0 ? '⭐ ' : ''}${p.name}</div>
@@ -485,11 +491,11 @@ function renderScorers(topScorers, game) {
           <div class="scorer-stat"><span>${p.ast}</span> ast</div>
         </div>
       </div>`).join('');
-    return `<div class="scorers-team" style="background:${bg};border:1px solid ${brd}"><div class="scorers-team-name">${teamName}</div>${rows}</div>`;
+    return `<div class="scorers-team" style="border:1px solid ${brd}"><div class="scorers-team-name">${teamName}</div>${rows}</div>`;
   };
 
-  const visitorCol = teamCol(topScorers.visitor, game.visitor_team.full_name, game.visitor_team.abbreviation);
-  const homeCol    = teamCol(topScorers.home,    game.home_team.full_name,    game.home_team.abbreviation);
+  const visitorCol = teamCol(topScorers.visitor, game.visitor_team.full_name, vWins);
+  const homeCol    = teamCol(topScorers.home,    game.home_team.full_name,    hWins);
 
   el.innerHTML = `
     <div class="scorers-header">Top Scorers</div>
@@ -521,16 +527,28 @@ async function analyzeGame(gameId) {
       : (gs.includes('Qtr') || gs === 'Halftime') ? gs
       : gs === 'In Progress' ? 'LIVE'
       : fmtGameTime(gs);
+    const vScore = parseInt(game.visitor_team_score, 10);
+    const hScore = parseInt(game.home_team_score, 10);
+    const vLeads = !isNaN(vScore) && !isNaN(hScore) && vScore > hScore;
+    const hLeads = !isNaN(vScore) && !isNaN(hScore) && hScore > vScore;
+    const vBg = hexToRgba(TEAM_COLORS[game.visitor_team.abbreviation] || '#1f1f30', 0.25);
+    const hBg = hexToRgba(TEAM_COLORS[game.home_team.abbreviation] || '#1f1f30', 0.25);
     scores.innerHTML = `
-      <div class="score-bar">
-        <div class="score-bar-side">
-          <span class="sbar-abbr">${game.visitor_team.abbreviation}</span>
-          <span class="sbar-score">${game.visitor_team_score}</span>
-        </div>
-        <div class="sbar-status">${sbarStatus}</div>
-        <div class="score-bar-side right">
-          <span class="sbar-score">${game.home_team_score}</span>
-          <span class="sbar-abbr">${game.home_team.abbreviation}</span>
+      <div class="score-split">
+        <div class="split-bg-left" style="background:${vBg}"></div>
+        <div class="split-bg-right" style="background:${hBg}"></div>
+        <div class="split-content">
+          <div class="split-team">
+            <span class="sbar-abbr">${game.visitor_team.abbreviation}</span>
+            <span class="winner-arrow" style="${vLeads ? '' : 'visibility:hidden'}">▼</span>
+            <span class="sbar-score">${game.visitor_team_score}</span>
+          </div>
+          <div class="sbar-status">${sbarStatus}</div>
+          <div class="split-team">
+            <span class="sbar-abbr">${game.home_team.abbreviation}</span>
+            <span class="winner-arrow" style="${hLeads ? '' : 'visibility:hidden'}">▼</span>
+            <span class="sbar-score">${game.home_team_score}</span>
+          </div>
         </div>
       </div>`;
     divid.style.display = '';
