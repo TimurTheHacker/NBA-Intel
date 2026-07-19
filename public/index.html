@@ -191,12 +191,13 @@ input[type="date"]:focus { border-color: var(--accent); }
 .score-split { position: relative; border-radius: 10px; overflow: hidden; width: 100%; background: var(--surface2); }
 .split-bg-left { position: absolute; inset: 0; clip-path: polygon(0 0, 55% 0, 45% 100%, 0 100%); }
 .split-bg-right { position: absolute; inset: 0; clip-path: polygon(55% 0, 100% 0, 100% 100%, 45% 100%); }
-.split-content { position: relative; z-index: 1; display: flex; align-items: center; padding: 16px 24px; }
-.split-team { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.split-content { position: relative; z-index: 1; display: flex; align-items: center; padding: 12px 20px; gap: 10px; }
+.sbar-left { flex: 1; display: flex; align-items: center; gap: 10px; }
+.sbar-right { flex: 1; display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
 .sbar-abbr { font-weight: 700; font-size: 14px; color: var(--muted2); font-family: 'DM Mono', monospace; }
 .sbar-score { font-family: 'Bebas Neue', sans-serif; font-size: 46px; color: var(--accent); line-height: 1; }
-.sbar-status { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--muted2); font-family: 'DM Mono', monospace; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; white-space: nowrap; margin: 0 12px; }
-.winner-arrow { color: var(--accent); font-size: 11px; line-height: 1; }
+.sbar-status { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--muted2); font-family: 'DM Mono', monospace; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; white-space: nowrap; }
+.sbar-arrow { color: var(--accent); font-size: 10px; flex-shrink: 0; }
 
 /* ── Prediction Chip ── */
 .prediction-chip { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); border-radius: 8px; padding: 8px 14px; margin: 0 auto 20px; display: flex; width: fit-content; align-items: center; gap: 8px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--purple); }
@@ -207,8 +208,8 @@ input[type="date"]:focus { border-color: var(--accent); }
   .score-summary { gap: 8px; }
   .score-chip { padding: 10px 12px; }
   .analysis-panel { padding: 20px; }
-  .sbar-score { font-size: 36px; }
-  .split-content { padding: 12px 16px; }
+  .sbar-score { font-size: 34px; }
+  .split-content { padding: 10px 14px; gap: 8px; }
 }
 </style>
 </head>
@@ -219,7 +220,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.27</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.28</p>
     </div>
   </header>
 
@@ -538,16 +539,16 @@ async function analyzeGame(gameId) {
         <div class="split-bg-left" style="background:${vBg}"></div>
         <div class="split-bg-right" style="background:${hBg}"></div>
         <div class="split-content">
-          <div class="split-team">
+          <div class="sbar-left">
             <span class="sbar-abbr">${game.visitor_team.abbreviation}</span>
-            <span class="winner-arrow" style="${vLeads ? '' : 'visibility:hidden'}">▼</span>
             <span class="sbar-score">${game.visitor_team_score}</span>
           </div>
+          <span class="sbar-arrow" style="${vLeads ? '' : 'visibility:hidden'}">◀</span>
           <div class="sbar-status">${sbarStatus}</div>
-          <div class="split-team">
-            <span class="sbar-abbr">${game.home_team.abbreviation}</span>
-            <span class="winner-arrow" style="${hLeads ? '' : 'visibility:hidden'}">▼</span>
+          <span class="sbar-arrow" style="${hLeads ? '' : 'visibility:hidden'}">▶</span>
+          <div class="sbar-right">
             <span class="sbar-score">${game.home_team_score}</span>
+            <span class="sbar-abbr">${game.home_team.abbreviation}</span>
           </div>
         </div>
       </div>`;
