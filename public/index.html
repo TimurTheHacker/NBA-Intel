@@ -192,8 +192,8 @@ input[type="date"]:focus { border-color: var(--accent); }
 .split-bg-left { position: absolute; inset: 0; clip-path: polygon(0 0, 55% 0, 45% 100%, 0 100%); }
 .split-bg-right { position: absolute; inset: 0; clip-path: polygon(55% 0, 100% 0, 100% 100%, 45% 100%); }
 .split-content { position: relative; z-index: 1; display: flex; align-items: center; padding: 12px 20px; gap: 10px; }
-.sbar-left { flex: 1; display: flex; align-items: center; gap: 10px; }
-.sbar-right { flex: 1; display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.sbar-left { flex: 1; display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.sbar-right { flex: 1; display: flex; align-items: center; gap: 10px; }
 .sbar-abbr { font-weight: 700; font-size: 14px; color: var(--muted2); font-family: 'DM Mono', monospace; }
 .sbar-score { font-family: 'Bebas Neue', sans-serif; font-size: 46px; color: var(--accent); line-height: 1; }
 .sbar-status { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--muted2); font-family: 'DM Mono', monospace; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; white-space: nowrap; }
@@ -220,7 +220,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.30</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.31</p>
     </div>
   </header>
 
@@ -532,8 +532,8 @@ async function analyzeGame(gameId) {
     const hScore = parseInt(game.home_team_score, 10);
     const vLeads = !isNaN(vScore) && !isNaN(hScore) && vScore > hScore;
     const hLeads = !isNaN(vScore) && !isNaN(hScore) && hScore > vScore;
-    const vBg = hexToRgba(TEAM_COLORS[game.visitor_team.abbreviation] || '#1f1f30', 0.25);
-    const hBg = hexToRgba(TEAM_COLORS[game.home_team.abbreviation] || '#1f1f30', 0.25);
+    const vBg = hexToRgba(TEAM_COLORS[game.visitor_team.abbreviation] || '#1f1f30', 0.35);
+    const hBg = hexToRgba(TEAM_COLORS[game.home_team.abbreviation] || '#1f1f30', 0.35);
     scores.innerHTML = `
       <div class="score-split">
         <div class="split-bg-left" style="background:${vBg}"></div>
@@ -803,7 +803,7 @@ async function loadStorylines() {
 const TEAM_COLORS = {
   ATL:'#E03A3E', BOS:'#007A33', BKN:'#777777', CHA:'#00788C',
   CHI:'#CE1141', CLE:'#860038', DAL:'#00538C', DEN:'#FEC524',
-  DET:'#C8102E', GSW:'#FFC72C', HOU:'#CE1141', IND:'#FDBB30',
+  DET:'#C8102E', GSW:'#1D428A', HOU:'#CE1141', IND:'#FDBB30',
   LAC:'#C8102E', LAL:'#552583', MEM:'#5D76A9', MIA:'#98002E',
   MIL:'#00471B', MIN:'#236192', NOP:'#B4975A', NYK:'#F58426',
   OKC:'#007AC1', ORL:'#0077C0', PHI:'#006BB6', PHX:'#E56020',
