@@ -202,8 +202,6 @@ input[type="date"]:focus { border-color: var(--accent); }
 /* ── My Team Select ── */
 select { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 9px 13px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; outline: none; transition: border-color 0.2s; color-scheme: dark; cursor: pointer; }
 select:focus { border-color: var(--accent); }
-.game-card.my-team-card { border-color: var(--my-team-border, var(--border)); }
-.game-card.my-team-card::after { background: var(--my-team-color, var(--border2)); }
 
 /* ── Team Storylines ── */
 .team-storylines-wrap { margin-top: 36px; margin-bottom: 48px; }
@@ -233,7 +231,7 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.32</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.33</p>
     </div>
   </header>
 
@@ -457,12 +455,6 @@ function buildCard(g) {
   const card = document.createElement('div');
   card.className = 'game-card';
   card.id = `card-${g.id}`;
-  if (myTeam && (g.home_team.abbreviation === myTeam.abbreviation || g.visitor_team.abbreviation === myTeam.abbreviation)) {
-    const tc = TEAM_COLORS[myTeam.abbreviation] || 'var(--accent)';
-    card.classList.add('my-team-card');
-    card.style.setProperty('--my-team-color', tc);
-    card.style.setProperty('--my-team-border', hexToRgba(tc, 0.4));
-  }
 
   const { badgeCls, badgeLabel, detail } = statusInfo(g);
   const hs = g.home_team_score ?? '–';
@@ -912,13 +904,11 @@ function setMyTeam(abbr) {
   myTeam = { abbreviation: abbr, full_name: TEAM_NAMES[abbr] || abbr };
   const color = TEAM_COLORS[abbr] || '#f5a623';
 
-  document.getElementById('teamSectionLabel').style.color = color;
-
   const btn = document.getElementById('teamStorylinesBtn');
   btn.textContent = `What's happening with the ${myTeam.full_name}?`;
-  btn.style.background = hexToRgba(color, 0.1);
-  btn.style.border     = `1px solid ${hexToRgba(color, 0.3)}`;
-  btn.style.color      = color;
+  btn.style.background = hexToRgba(color, 0.2);
+  btn.style.border     = `1px solid ${hexToRgba(color, 0.6)}`;
+  btn.style.color      = 'var(--text)';
 
   const panel = document.getElementById('teamStorylinesPanel');
   panel.style.borderLeftColor = color;
@@ -938,7 +928,7 @@ async function loadTeamStorylines() {
 
   btn.disabled    = true;
   btn.textContent = 'Loading…';
-  btn.style.color = color;
+  btn.style.color = 'var(--text)';
   panel.style.display = '';
   text.textContent    = '';
   text.classList.add('streaming');
@@ -980,7 +970,7 @@ async function loadTeamStorylines() {
     btn.textContent = 'Retry';
   } finally {
     btn.disabled    = false;
-    btn.style.color = color;
+    btn.style.color = 'var(--text)';
   }
 }
 
