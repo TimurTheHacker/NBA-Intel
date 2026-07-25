@@ -231,7 +231,7 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.33</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.34</p>
     </div>
   </header>
 
@@ -892,6 +892,14 @@ function hexToRgba(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;
 }
+function brightColor(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  if (lum >= 0.35) return hex;
+  const f = 0.55;
+  return `rgb(${Math.round(r+(255-r)*f)},${Math.round(g+(255-g)*f)},${Math.round(b+(255-b)*f)})`;
+}
 
 function setMyTeam(abbr) {
   const wrap = document.getElementById('teamStorylinesWrap');
@@ -908,7 +916,7 @@ function setMyTeam(abbr) {
   btn.textContent = `What's happening with the ${myTeam.full_name}?`;
   btn.style.background = hexToRgba(color, 0.2);
   btn.style.border     = `1px solid ${hexToRgba(color, 0.6)}`;
-  btn.style.color      = 'var(--text)';
+  btn.style.color      = brightColor(color);
 
   const panel = document.getElementById('teamStorylinesPanel');
   panel.style.borderLeftColor = color;
@@ -928,7 +936,7 @@ async function loadTeamStorylines() {
 
   btn.disabled    = true;
   btn.textContent = 'Loading…';
-  btn.style.color = 'var(--text)';
+  btn.style.color = brightColor(color);
   panel.style.display = '';
   text.textContent    = '';
   text.classList.add('streaming');
@@ -970,7 +978,7 @@ async function loadTeamStorylines() {
     btn.textContent = 'Retry';
   } finally {
     btn.disabled    = false;
-    btn.style.color = 'var(--text)';
+    btn.style.color = brightColor(color);
   }
 }
 
