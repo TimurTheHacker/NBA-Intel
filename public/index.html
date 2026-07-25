@@ -199,6 +199,19 @@ input[type="date"]:focus { border-color: var(--accent); }
 .sbar-status { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--muted2); font-family: 'DM Mono', monospace; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; white-space: nowrap; }
 .sbar-arrow { color: var(--accent); font-size: 10px; flex-shrink: 0; }
 
+/* ── My Team Select ── */
+select { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 9px 13px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; outline: none; transition: border-color 0.2s; color-scheme: dark; cursor: pointer; }
+select:focus { border-color: var(--accent); }
+.game-card.my-team-card { border-color: var(--my-team-border, var(--border)); }
+.game-card.my-team-card::after { background: var(--my-team-color, var(--border2)); }
+
+/* ── Team Storylines ── */
+.team-storylines-wrap { margin-top: 36px; margin-bottom: 48px; }
+.btn-team-storylines { border-radius: 8px; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity 0.15s; letter-spacing: 0.3px; border-style: solid; border-width: 1px; }
+.btn-team-storylines:hover { opacity: 0.8; }
+.btn-team-storylines:disabled { opacity: 0.4; cursor: not-allowed; }
+.team-storylines-panel { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--r); padding: 24px 28px; margin-top: 14px; animation: appear 0.25s ease; }
+
 /* ── Prediction Chip ── */
 .prediction-chip { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); border-radius: 8px; padding: 8px 14px; margin: 0 auto 20px; display: flex; width: fit-content; align-items: center; gap: 8px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--purple); }
 .pred-pill { font-size: 8px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--purple); background: rgba(167,139,250,0.15); border-radius: 4px; padding: 2px 7px; flex-shrink: 0; }
@@ -220,7 +233,7 @@ input[type="date"]:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.31</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.32</p>
     </div>
   </header>
 
@@ -253,6 +266,44 @@ input[type="date"]:focus { border-color: var(--accent); }
       <button class="btn btn-ghost" onclick="setToday()">Today</button>
       <button class="btn btn-primary" id="searchBtn" onclick="fetchGames()">Search</button>
     </div>
+    <div class="controls-row" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="field" style="max-width:220px">
+        <label>My Team</label>
+        <select id="myTeamSelect" onchange="setMyTeam(this.value)">
+          <option value="">No team selected</option>
+          <option value="ATL">ATL · Atlanta Hawks</option>
+          <option value="BOS">BOS · Boston Celtics</option>
+          <option value="BKN">BKN · Brooklyn Nets</option>
+          <option value="CHA">CHA · Charlotte Hornets</option>
+          <option value="CHI">CHI · Chicago Bulls</option>
+          <option value="CLE">CLE · Cleveland Cavaliers</option>
+          <option value="DAL">DAL · Dallas Mavericks</option>
+          <option value="DEN">DEN · Denver Nuggets</option>
+          <option value="DET">DET · Detroit Pistons</option>
+          <option value="GSW">GSW · Golden State Warriors</option>
+          <option value="HOU">HOU · Houston Rockets</option>
+          <option value="IND">IND · Indiana Pacers</option>
+          <option value="LAC">LAC · LA Clippers</option>
+          <option value="LAL">LAL · Los Angeles Lakers</option>
+          <option value="MEM">MEM · Memphis Grizzlies</option>
+          <option value="MIA">MIA · Miami Heat</option>
+          <option value="MIL">MIL · Milwaukee Bucks</option>
+          <option value="MIN">MIN · Minnesota Timberwolves</option>
+          <option value="NOP">NOP · New Orleans Pelicans</option>
+          <option value="NYK">NYK · New York Knicks</option>
+          <option value="OKC">OKC · Oklahoma City Thunder</option>
+          <option value="ORL">ORL · Orlando Magic</option>
+          <option value="PHI">PHI · Philadelphia 76ers</option>
+          <option value="PHX">PHX · Phoenix Suns</option>
+          <option value="POR">POR · Portland Trail Blazers</option>
+          <option value="SAC">SAC · Sacramento Kings</option>
+          <option value="SAS">SAS · San Antonio Spurs</option>
+          <option value="TOR">TOR · Toronto Raptors</option>
+          <option value="UTA">UTA · Utah Jazz</option>
+          <option value="WAS">WAS · Washington Wizards</option>
+        </select>
+      </div>
+    </div>
   </div>
 
   <div class="analysis-panel" id="analysisPanel">
@@ -284,12 +335,22 @@ input[type="date"]:focus { border-color: var(--accent); }
     </div>
   </div>
 
+  <div class="team-storylines-wrap" id="teamStorylinesWrap" style="display:none">
+    <div class="section-label" id="teamSectionLabel">Team Storylines</div>
+    <button class="btn-team-storylines" id="teamStorylinesBtn" onclick="loadTeamStorylines()">—</button>
+    <div class="team-storylines-panel" id="teamStorylinesPanel" style="display:none">
+      <div class="storylines-main analysis-text" id="teamStorylinesText"></div>
+    </div>
+  </div>
+
 </div>
 <script>
 let mode         = 'single';
 let summaryLen   = 'short';
 let games        = [];
 let activeGameId = null;
+let myTeam       = null;
+let currentLabel = '';
 
 (function init() {
   const today = todayStr();
@@ -364,6 +425,7 @@ async function fetchGames() {
 }
 
 function renderGames(list, label) {
+  currentLabel = label;
   const wrap = document.getElementById('gamesWrap');
   if (!list.length) {
     wrap.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>No games found for ${label}</p></div>`;
@@ -373,6 +435,12 @@ function renderGames(list, label) {
   list.sort((a, b) => {
     const da = new Date(a.date), db = new Date(b.date);
     if (da - db !== 0) return da - db;
+    if (myTeam) {
+      const aIs = a.home_team.abbreviation === myTeam.abbreviation || a.visitor_team.abbreviation === myTeam.abbreviation;
+      const bIs = b.home_team.abbreviation === myTeam.abbreviation || b.visitor_team.abbreviation === myTeam.abbreviation;
+      if (aIs && !bIs) return -1;
+      if (!aIs && bIs) return 1;
+    }
     const rank = s => s === 'Final' || s === 'Final/OT' ? 2 : s?.includes('Qtr') ? 0 : 1;
     return rank(a.status) - rank(b.status);
   });
@@ -389,6 +457,12 @@ function buildCard(g) {
   const card = document.createElement('div');
   card.className = 'game-card';
   card.id = `card-${g.id}`;
+  if (myTeam && (g.home_team.abbreviation === myTeam.abbreviation || g.visitor_team.abbreviation === myTeam.abbreviation)) {
+    const tc = TEAM_COLORS[myTeam.abbreviation] || 'var(--accent)';
+    card.classList.add('my-team-card');
+    card.style.setProperty('--my-team-color', tc);
+    card.style.setProperty('--my-team-border', hexToRgba(tc, 0.4));
+  }
 
   const { badgeCls, badgeLabel, detail } = statusInfo(g);
   const hs = g.home_team_score ?? '–';
@@ -800,6 +874,18 @@ async function loadStorylines() {
   }
 }
 
+const TEAM_NAMES = {
+  ATL:'Atlanta Hawks', BOS:'Boston Celtics', BKN:'Brooklyn Nets',
+  CHA:'Charlotte Hornets', CHI:'Chicago Bulls', CLE:'Cleveland Cavaliers',
+  DAL:'Dallas Mavericks', DEN:'Denver Nuggets', DET:'Detroit Pistons',
+  GSW:'Golden State Warriors', HOU:'Houston Rockets', IND:'Indiana Pacers',
+  LAC:'LA Clippers', LAL:'Los Angeles Lakers', MEM:'Memphis Grizzlies',
+  MIA:'Miami Heat', MIL:'Milwaukee Bucks', MIN:'Minnesota Timberwolves',
+  NOP:'New Orleans Pelicans', NYK:'New York Knicks', OKC:'Oklahoma City Thunder',
+  ORL:'Orlando Magic', PHI:'Philadelphia 76ers', PHX:'Phoenix Suns',
+  POR:'Portland Trail Blazers', SAC:'Sacramento Kings', SAS:'San Antonio Spurs',
+  TOR:'Toronto Raptors', UTA:'Utah Jazz', WAS:'Washington Wizards',
+};
 const TEAM_COLORS = {
   ATL:'#E03A3E', BOS:'#007A33', BKN:'#777777', CHA:'#00788C',
   CHI:'#CE1141', CLE:'#860038', DAL:'#00538C', DEN:'#FEC524',
@@ -813,6 +899,89 @@ const TEAM_COLORS = {
 function hexToRgba(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;
+}
+
+function setMyTeam(abbr) {
+  const wrap = document.getElementById('teamStorylinesWrap');
+  if (!abbr) {
+    myTeam = null;
+    wrap.style.display = 'none';
+    if (games.length) renderGames([...games], currentLabel);
+    return;
+  }
+  myTeam = { abbreviation: abbr, full_name: TEAM_NAMES[abbr] || abbr };
+  const color = TEAM_COLORS[abbr] || '#f5a623';
+
+  document.getElementById('teamSectionLabel').style.color = color;
+
+  const btn = document.getElementById('teamStorylinesBtn');
+  btn.textContent = `What's happening with the ${myTeam.full_name}?`;
+  btn.style.background = hexToRgba(color, 0.1);
+  btn.style.border     = `1px solid ${hexToRgba(color, 0.3)}`;
+  btn.style.color      = color;
+
+  const panel = document.getElementById('teamStorylinesPanel');
+  panel.style.borderLeftColor = color;
+  panel.style.display = 'none';
+  document.getElementById('teamStorylinesText').textContent = '';
+
+  wrap.style.display = '';
+  if (games.length) renderGames([...games], currentLabel);
+}
+
+async function loadTeamStorylines() {
+  if (!myTeam) return;
+  const btn   = document.getElementById('teamStorylinesBtn');
+  const panel = document.getElementById('teamStorylinesPanel');
+  const text  = document.getElementById('teamStorylinesText');
+  const color = TEAM_COLORS[myTeam.abbreviation] || '#f5a623';
+
+  btn.disabled    = true;
+  btn.textContent = 'Loading…';
+  btn.style.color = color;
+  panel.style.display = '';
+  text.textContent    = '';
+  text.classList.add('streaming');
+
+  try {
+    const res = await fetch('/api/team-storylines', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team: myTeam }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Error ${res.status}`);
+    }
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try {
+          const p = JSON.parse(raw);
+          if (p.type === 'content_block_delta' && p.delta?.text) text.textContent += p.delta.text;
+        } catch { /* skip */ }
+      }
+    }
+    text.classList.remove('streaming');
+    btn.textContent = '↺ Refresh';
+  } catch (e) {
+    text.classList.remove('streaming');
+    panel.innerHTML = `<div class="error-box">Failed to load team storylines: ${e.message}</div>`;
+    btn.textContent = 'Retry';
+  } finally {
+    btn.disabled    = false;
+    btn.style.color = color;
+  }
 }
 
 function showLoading(id, msg) {
