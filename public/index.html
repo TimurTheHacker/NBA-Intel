@@ -199,6 +199,14 @@ input[type="date"]:focus { border-color: var(--accent); }
 .sbar-status { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--muted2); font-family: 'DM Mono', monospace; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; white-space: nowrap; }
 .sbar-arrow { color: var(--accent); font-size: 10px; flex-shrink: 0; }
 
+/* ── Tab Bar ── */
+.tab-bar { display: flex; gap: 8px; margin-bottom: 28px; }
+.tab-btn { flex: 1; height: 42px; border: 1px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.18s; background: transparent; color: var(--muted); letter-spacing: 0.3px; }
+.tab-btn:hover:not(.active) { color: var(--text); border-color: var(--border2); }
+.tab-btn[data-tab="games"].active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.tab-btn[data-tab="storylines"].active { background: rgba(78,203,113,0.12); border-color: rgba(78,203,113,0.45); color: var(--green); }
+.tab-pane { }
+
 /* ── My Team Select ── */
 select { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 9px 13px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; outline: none; transition: border-color 0.2s; color-scheme: dark; cursor: pointer; }
 select:focus { border-color: var(--accent); }
@@ -231,10 +239,17 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.36</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.40</p>
     </div>
   </header>
 
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="games" onclick="setTab('games')">Game Finder</button>
+    <button class="tab-btn" data-tab="storylines" onclick="setTab('storylines')">Storylines</button>
+    <button class="tab-btn" data-tab="team" onclick="setTab('team')">Home Court</button>
+  </div>
+
+  <div class="tab-pane" id="tab-games">
   <div class="controls">
     <div class="controls-title">Search Games</div>
     <div class="controls-row">
@@ -264,44 +279,6 @@ select:focus { border-color: var(--accent); }
       <button class="btn btn-ghost" onclick="setToday()">Today</button>
       <button class="btn btn-primary" id="searchBtn" onclick="fetchGames()">Search</button>
     </div>
-    <div class="controls-row" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-      <div class="field" style="min-width:300px;max-width:320px">
-        <label>My Team</label>
-        <select id="myTeamSelect" onchange="setMyTeam(this.value)">
-          <option value="">No team selected</option>
-          <option value="ATL">ATL · Atlanta Hawks</option>
-          <option value="BOS">BOS · Boston Celtics</option>
-          <option value="BKN">BKN · Brooklyn Nets</option>
-          <option value="CHA">CHA · Charlotte Hornets</option>
-          <option value="CHI">CHI · Chicago Bulls</option>
-          <option value="CLE">CLE · Cleveland Cavaliers</option>
-          <option value="DAL">DAL · Dallas Mavericks</option>
-          <option value="DEN">DEN · Denver Nuggets</option>
-          <option value="DET">DET · Detroit Pistons</option>
-          <option value="GSW">GSW · Golden State Warriors</option>
-          <option value="HOU">HOU · Houston Rockets</option>
-          <option value="IND">IND · Indiana Pacers</option>
-          <option value="LAC">LAC · LA Clippers</option>
-          <option value="LAL">LAL · Los Angeles Lakers</option>
-          <option value="MEM">MEM · Memphis Grizzlies</option>
-          <option value="MIA">MIA · Miami Heat</option>
-          <option value="MIL">MIL · Milwaukee Bucks</option>
-          <option value="MIN">MIN · Minnesota Timberwolves</option>
-          <option value="NOP">NOP · New Orleans Pelicans</option>
-          <option value="NYK">NYK · New York Knicks</option>
-          <option value="OKC">OKC · Oklahoma City Thunder</option>
-          <option value="ORL">ORL · Orlando Magic</option>
-          <option value="PHI">PHI · Philadelphia 76ers</option>
-          <option value="PHX">PHX · Phoenix Suns</option>
-          <option value="POR">POR · Portland Trail Blazers</option>
-          <option value="SAC">SAC · Sacramento Kings</option>
-          <option value="SAS">SAS · San Antonio Spurs</option>
-          <option value="TOR">TOR · Toronto Raptors</option>
-          <option value="UTA">UTA · Utah Jazz</option>
-          <option value="WAS">WAS · Washington Wizards</option>
-        </select>
-      </div>
-    </div>
   </div>
 
   <div class="analysis-panel" id="analysisPanel">
@@ -324,20 +301,67 @@ select:focus { border-color: var(--accent); }
       <p>Pick a date above to load games</p>
     </div>
   </div>
+  </div><!-- end tab-games -->
 
-  <div class="storylines-wrap">
-    <div class="section-label">Storylines</div>
-    <button class="btn-storylines" id="storylinesBtn" onclick="loadStorylines()">What's happening in the NBA right now?</button>
-    <div class="storylines-panel" id="storylinesPanel" style="display:none">
-      <div class="analysis-text" id="storylinesText"></div>
+  <div class="tab-pane" id="tab-storylines" style="display:none">
+    <div class="storylines-wrap" style="margin-top:8px">
+      <div class="section-label">Storylines</div>
+      <button class="btn-storylines" id="storylinesBtn" onclick="loadStorylines()">What's happening in the NBA right now?</button>
+      <div class="storylines-panel" id="storylinesPanel" style="display:none">
+        <div class="analysis-text" id="storylinesText"></div>
+      </div>
     </div>
   </div>
 
-  <div class="team-storylines-wrap" id="teamStorylinesWrap" style="display:none">
-    <div class="section-label" id="teamSectionLabel">Team Storylines</div>
-    <button class="btn-team-storylines" id="teamStorylinesBtn" onclick="loadTeamStorylines()">—</button>
-    <div class="team-storylines-panel" id="teamStorylinesPanel" style="display:none">
-      <div class="storylines-main analysis-text" id="teamStorylinesText"></div>
+  <div class="tab-pane" id="tab-team" style="display:none">
+    <div class="controls" style="margin-bottom:20px">
+      <div class="controls-title">My Team</div>
+      <div class="controls-row">
+        <div class="field" style="min-width:300px;max-width:320px">
+          <label>Select Your Team</label>
+          <select id="myTeamSelect" onchange="setMyTeam(this.value)">
+            <option value="">No team selected</option>
+            <option value="ATL">ATL · Atlanta Hawks</option>
+            <option value="BOS">BOS · Boston Celtics</option>
+            <option value="BKN">BKN · Brooklyn Nets</option>
+            <option value="CHA">CHA · Charlotte Hornets</option>
+            <option value="CHI">CHI · Chicago Bulls</option>
+            <option value="CLE">CLE · Cleveland Cavaliers</option>
+            <option value="DAL">DAL · Dallas Mavericks</option>
+            <option value="DEN">DEN · Denver Nuggets</option>
+            <option value="DET">DET · Detroit Pistons</option>
+            <option value="GSW">GSW · Golden State Warriors</option>
+            <option value="HOU">HOU · Houston Rockets</option>
+            <option value="IND">IND · Indiana Pacers</option>
+            <option value="LAC">LAC · LA Clippers</option>
+            <option value="LAL">LAL · Los Angeles Lakers</option>
+            <option value="MEM">MEM · Memphis Grizzlies</option>
+            <option value="MIA">MIA · Miami Heat</option>
+            <option value="MIL">MIL · Milwaukee Bucks</option>
+            <option value="MIN">MIN · Minnesota Timberwolves</option>
+            <option value="NOP">NOP · New Orleans Pelicans</option>
+            <option value="NYK">NYK · New York Knicks</option>
+            <option value="OKC">OKC · Oklahoma City Thunder</option>
+            <option value="ORL">ORL · Orlando Magic</option>
+            <option value="PHI">PHI · Philadelphia 76ers</option>
+            <option value="PHX">PHX · Phoenix Suns</option>
+            <option value="POR">POR · Portland Trail Blazers</option>
+            <option value="SAC">SAC · Sacramento Kings</option>
+            <option value="SAS">SAS · San Antonio Spurs</option>
+            <option value="TOR">TOR · Toronto Raptors</option>
+            <option value="UTA">UTA · Utah Jazz</option>
+            <option value="WAS">WAS · Washington Wizards</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="teamPlaceholder" style="color:var(--muted);font-size:13px;padding:16px 0">Select a team above to see their storylines.</div>
+    <div class="team-storylines-wrap" id="teamStorylinesWrap" style="display:none;margin-top:0">
+      <div class="section-label" id="teamSectionLabel">Team Storylines</div>
+      <button class="btn-team-storylines" id="teamStorylinesBtn" onclick="loadTeamStorylines()">—</button>
+      <div class="team-storylines-panel" id="teamStorylinesPanel" style="display:none">
+        <div class="storylines-main analysis-text" id="teamStorylinesText"></div>
+      </div>
     </div>
   </div>
 
@@ -909,16 +933,39 @@ function brightColor(hex) {
   return `hsl(${Math.round(h * 360)},${Math.round(ts * 100)}%,70%)`;
 }
 
+function setTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-pane').forEach(p => p.style.display = p.id === `tab-${tab}` ? '' : 'none');
+}
+
+function updateTeamTabStyle() {
+  const btn = document.querySelector('.tab-btn[data-tab="team"]');
+  if (!btn) return;
+  if (myTeam) {
+    const color = TEAM_COLORS[myTeam.abbreviation] || '#f5a623';
+    btn.style.background   = hexToRgba(color, 0.15);
+    btn.style.borderColor  = hexToRgba(color, 0.5);
+    btn.style.color        = brightColor(color);
+  } else {
+    btn.style.background  = '';
+    btn.style.borderColor = '';
+    btn.style.color       = '';
+  }
+}
+
 function setMyTeam(abbr) {
   const wrap = document.getElementById('teamStorylinesWrap');
   if (!abbr) {
     myTeam = null;
     wrap.style.display = 'none';
+    document.getElementById('teamPlaceholder').style.display = '';
+    updateTeamTabStyle();
     if (games.length) renderGames([...games], currentLabel);
     return;
   }
   myTeam = { abbreviation: abbr, full_name: TEAM_NAMES[abbr] || abbr };
   const color = TEAM_COLORS[abbr] || '#f5a623';
+  document.getElementById('teamPlaceholder').style.display = 'none';
 
   const btn = document.getElementById('teamStorylinesBtn');
   btn.textContent = `What's happening with the ${myTeam.full_name}?`;
@@ -932,6 +979,7 @@ function setMyTeam(abbr) {
   document.getElementById('teamStorylinesText').textContent = '';
 
   wrap.style.display = '';
+  updateTeamTabStyle();
   if (games.length) renderGames([...games], currentLabel);
 }
 
