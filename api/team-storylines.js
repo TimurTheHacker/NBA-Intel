@@ -58,7 +58,7 @@ export default async function handler(req) {
 
   const prompt = `You are a sharp NBA insider with deep knowledge of the ${team.full_name} (${team.abbreviation}). Based on the news below, write a tight briefing on what is happening with this team right now.
 
-Write ONE paragraph of 5–6 sentences covering: the team's current situation (record, form, or offseason status), the biggest storyline surrounding them, and what fans should be watching for next. Specific, opinionated, and grounded in the news. Write like a polished press release — no headers, no labels, just the paragraph.
+Write ONE paragraph of 5–6 sentences covering: the team's current situation (record, form, or offseason status), the biggest storyline surrounding them, and what fans should be watching for next. Match the tone to where the team actually stands — for contenders, be bold and championship-focused; for playoff-bubble teams, explore what separates them from the next level; for rebuilding teams, be honest about the timeline but highlight the genuine upside in their young core or front-office moves. Always forward-looking, specific, and grounded. Write like a polished press release — no headers, no labels, just the paragraph.
 
 ${webContext || `No current news available — use the most relevant recent context you know about the ${team.full_name}.`}
 
