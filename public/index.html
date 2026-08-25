@@ -202,9 +202,8 @@ input[type="date"]:focus { border-color: var(--accent); }
 /* ── Tab Bar ── */
 .tab-bar { display: flex; gap: 8px; margin-bottom: 28px; }
 .tab-btn { flex: 1; height: 42px; border: 1px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.18s; background: transparent; color: var(--muted); letter-spacing: 0.3px; }
-.tab-btn:hover:not(.active) { color: var(--text); border-color: var(--border2); }
-.tab-btn.active { opacity: 0.55; }
-.tab-btn.active:hover { opacity: 1; }
+.tab-btn:not(.active) { opacity: 0.45; }
+.tab-btn:not(.active):hover { opacity: 0.85; color: var(--text); border-color: var(--border2); }
 .tab-btn[data-tab="games"].active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 .tab-btn[data-tab="storylines"].active { background: rgba(78,203,113,0.12); border-color: rgba(78,203,113,0.45); color: var(--green); }
 .tab-pane { }
@@ -241,7 +240,7 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.44</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.45</p>
     </div>
   </header>
 
@@ -951,7 +950,7 @@ function updateTeamTabStyle() {
   } else {
     btn.style.background  = '';
     btn.style.borderColor = '';
-    btn.style.color       = '';
+    btn.style.color       = 'var(--muted2)';
   }
 }
 
