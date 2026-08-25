@@ -43,8 +43,8 @@ export default async function handler(req) {
         (data?.organic || []).slice(0, limit).map(r => `- ${r.title}: ${r.snippet}`).filter(Boolean);
 
       const [news, moves] = await Promise.all([
-        serper(`${team.full_name} NBA ${month} ${year}`),
-        serper(`${team.full_name} NBA trade signing draft performance ${year}`),
+        serper(`${team.full_name} NBA news ${month} ${year}`),
+        serper(`${team.full_name} NBA performance trade roster moves ${month} ${year}`),
       ]);
 
       const parts = [
