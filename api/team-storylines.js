@@ -42,23 +42,25 @@ export default async function handler(req) {
       const toSnippets = (data, limit) =>
         (data?.organic || []).slice(0, limit).map(r => `- ${r.title}: ${r.snippet}`).filter(Boolean);
 
-      const [news, moves] = await Promise.all([
+      const [news, moves, history] = await Promise.all([
         serper(`${team.full_name} NBA news ${month} ${year}`),
         serper(`${team.full_name} NBA performance trade roster moves ${month} ${year}`),
+        serper(`${team.full_name} NBA ${year} season record star players key players`),
       ]);
 
       const parts = [
         toSnippets(news, 4).join('\n'),
         toSnippets(moves, 3).join('\n'),
+        toSnippets(history, 3).join('\n'),
       ].filter(Boolean);
 
-      if (parts.length) webContext = `Current ${team.full_name} news:\n\n${parts.join('\n\n')}`;
+      if (parts.length) webContext = `Current ${team.full_name} news:\n\n[Headlines]\n${parts[0]}${parts[1] ? `\n\n[Moves & Performance]\n${parts[1]}` : ''}${parts[2] ? `\n\n[Season & Stars]\n${parts[2]}` : ''}`;
     } catch {}
   }
 
   const prompt = `You are a sharp NBA insider with deep knowledge of the ${team.full_name} (${team.abbreviation}). Based on the news below, write a tight briefing on what is happening with this team right now.
 
-Write ONE paragraph of 5–6 sentences. Lead with the team's identity and what makes them compelling right now — their star power, system, depth, or trajectory. Cover the biggest current storyline, then close with a confident, forward-looking take on what they can achieve. The tone should always be energized and fan-facing: celebrate what's working, contextualize what isn't, and leave the reader excited. For elite teams, be bold about their ceiling. For rebuilding teams, make the upside feel real and near. Never sound like an obituary. Write like a polished press release — no headers, no labels, just the paragraph.
+Write ONE paragraph of 5–6 sentences. Name the team's anchor star(s) naturally — they are the identity. Cover the biggest current storyline. Reference recent history only when it directly shapes the current narrative — for example, a defending champion chasing a repeat, a team bouncing back after missing the playoffs, or a franchise cornerstone recently extended. Do not cite a specific win-loss record unless it is the story right now. Close with a confident, forward-looking take. Always energized and fan-facing: celebrate what is working, contextualize what is not, never sound like an obituary. Write like a polished press release — no headers, no labels, just the paragraph.
 
 ${webContext || `No current news available — use the most relevant recent context you know about the ${team.full_name}.`}
 
