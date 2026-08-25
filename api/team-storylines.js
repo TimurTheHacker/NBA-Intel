@@ -18,7 +18,8 @@ export default async function handler(req) {
     });
   }
 
-  const { team } = body;
+  const { team, length = 'short' } = body;
+  const isLong = length === 'long';
   if (!team?.abbreviation || !team?.full_name) {
     return new Response(JSON.stringify({ error: 'Missing team data' }), {
       status: 400, headers: { 'Content-Type': 'application/json' },
@@ -60,11 +61,11 @@ export default async function handler(req) {
 
   const prompt = `You are a sharp NBA insider with deep knowledge of the ${team.full_name} (${team.abbreviation}). Based on the news below, write a tight briefing on what is happening with this team right now.
 
-Write ONE paragraph of 5–6 sentences. Name the team's anchor star(s) naturally — they are the identity. Cover the biggest current storyline. Reference recent history only when it directly shapes the current narrative — for example, a defending champion chasing a repeat, a team bouncing back after missing the playoffs, or a franchise cornerstone recently extended. Do not cite a specific win-loss record unless it is the story right now. Close with a confident, forward-looking take. Always energized and fan-facing: celebrate what is working, contextualize what is not, never sound like an obituary. Write like a polished press release — no headers, no labels, just the paragraph.
+Write ONE paragraph of ${isLong ? '10–12' : '6–7'} sentences. Name the team's anchor star(s) naturally — they are the identity. Cover the biggest current storyline. Reference recent history only when it directly shapes the current narrative — for example, a defending champion chasing a repeat, a team bouncing back after missing the playoffs, or a franchise cornerstone recently extended. Do not cite a specific win-loss record unless it is the story right now. Close with a confident, forward-looking take. Always energized and fan-facing: celebrate what is working, contextualize what is not, never sound like an obituary. Write like a polished press release — no headers, no labels, just the paragraph.
 
 ${webContext || `No current news available — use the most relevant recent context you know about the ${team.full_name}.`}
 
-Rules: rely on the news above as your primary source; max 120 words; no run-on sentences; prioritize storylines about performance, roster moves, standings, and team identity — only mention injuries if a star player is out and it materially changes the team's outlook.`;
+Rules: rely on the news above as your primary source; max ${isLong ? '260' : '140'} words; no run-on sentences; prioritize storylines about performance, roster moves, standings, and team identity — only mention injuries if a star player is out and it materially changes the team's outlook.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -76,7 +77,7 @@ Rules: rely on the news above as your primary source; max 120 words; no run-on s
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 250,
+        max_tokens: isLong ? 650 : 300,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),

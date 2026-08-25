@@ -10,6 +10,11 @@ export default async function handler(req) {
     });
   }
 
+  let body = {};
+  try { body = await req.json(); } catch {}
+  const { length = 'short' } = body;
+  const isLong = length === 'long';
+
   let webContext = '';
   const serperKey = process.env.SERPER_API_KEY;
   if (serperKey) {
@@ -69,13 +74,13 @@ export default async function handler(req) {
   const prompt = `You are a sharp NBA insider. Report the biggest current storylines, prioritizing the most current and biggest news over theories, older news, and stories of less importance. Based on the current news below, produce a structured storylines briefing in EXACTLY this format — no deviations, no extra headers:
 
 MAIN
-[One tight paragraph: 5–6 sentences, max 110 words. Cover the single biggest NBA storyline dominating every conversation right now. Specific and opinionated.]
+[One tight paragraph: ${isLong ? '10–13' : '6–7'} sentences, max ${isLong ? '250' : '130'} words. Cover the single biggest NBA storyline dominating every conversation right now. Specific and opinionated.]
 
 SIDE: [Short punchy title]
-[One tight paragraph: 4–5 sentences, max 90 words.]
+[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words.]
 
 SIDE: [Short punchy title]
-[One tight paragraph: 4–5 sentences, max 90 words.]
+[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words.]
 
 ${webContext || 'No current news available — use the most relevant recent NBA context you are aware of.'}
 
@@ -91,7 +96,7 @@ Rules: rely on the news above as your primary source; exactly 2 SIDE items; each
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 700,
+        max_tokens: isLong ? 1800 : 850,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),

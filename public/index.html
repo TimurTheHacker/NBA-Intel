@@ -202,7 +202,7 @@ input[type="date"]:focus { border-color: var(--accent); }
 /* ── Tab Bar ── */
 .tab-bar { display: flex; gap: 8px; margin-bottom: 28px; }
 .tab-btn { flex: 1; height: 42px; border: 1px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.18s; background: transparent; color: var(--muted); letter-spacing: 0.3px; }
-.tab-btn:not(.active) { opacity: 0.45; }
+.tab-btn:not(.active) { opacity: 0.65; }
 .tab-btn:not(.active):hover { opacity: 0.85; }
 .tab-btn[data-tab="games"] { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 .tab-btn[data-tab="storylines"] { background: rgba(78,203,113,0.12); border-color: rgba(78,203,113,0.45); color: var(--green); }
@@ -240,7 +240,7 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.45</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.46</p>
     </div>
   </header>
 
@@ -306,7 +306,13 @@ select:focus { border-color: var(--accent); }
 
   <div class="tab-pane" id="tab-storylines" style="display:none">
     <div class="storylines-wrap" style="margin-top:8px">
-      <div class="section-label">Storylines</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="section-label" style="margin-bottom:0">Storylines</div>
+        <div class="seg-toggle" id="storylinesLengthToggle">
+          <button class="seg-tab active" data-slen="short" onclick="setStorylinesLen('short')">Short</button>
+          <button class="seg-tab" data-slen="long" onclick="setStorylinesLen('long')">Long</button>
+        </div>
+      </div>
       <button class="btn-storylines" id="storylinesBtn" onclick="loadStorylines()">What's happening in the NBA right now?</button>
       <div class="storylines-panel" id="storylinesPanel" style="display:none">
         <div class="analysis-text" id="storylinesText"></div>
@@ -358,7 +364,13 @@ select:focus { border-color: var(--accent); }
     </div>
     <div id="teamPlaceholder" style="color:var(--muted);font-size:13px;padding:16px 0">Select a team above to see their storylines.</div>
     <div class="team-storylines-wrap" id="teamStorylinesWrap" style="display:none;margin-top:0">
-      <div class="section-label" id="teamSectionLabel">Team Storylines</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="section-label" id="teamSectionLabel" style="margin-bottom:0">Team Storylines</div>
+        <div class="seg-toggle" id="teamStorylinesLengthToggle">
+          <button class="seg-tab active" data-slen="short" onclick="setTeamStorylinesLen('short')">Short</button>
+          <button class="seg-tab" data-slen="long" onclick="setTeamStorylinesLen('long')">Long</button>
+        </div>
+      </div>
       <button class="btn-team-storylines" id="teamStorylinesBtn" onclick="loadTeamStorylines()">—</button>
       <div class="team-storylines-panel" id="teamStorylinesPanel" style="display:none">
         <div class="storylines-main analysis-text" id="teamStorylinesText"></div>
@@ -368,8 +380,10 @@ select:focus { border-color: var(--accent); }
 
 </div>
 <script>
-let mode         = 'single';
-let summaryLen   = 'short';
+let mode               = 'single';
+let summaryLen         = 'short';
+let storylinesLen      = 'short';
+let teamStorylinesLen  = 'short';
 let games        = [];
 let activeGameId = null;
 let myTeam       = null;
@@ -852,7 +866,7 @@ async function loadStorylines() {
     const res = await fetch('/api/storylines', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ length: storylinesLen }),
     });
 
     if (!res.ok) {
@@ -934,6 +948,17 @@ function brightColor(hex) {
   return `hsl(${Math.round(h * 360)},${Math.round(ts * 100)}%,70%)`;
 }
 
+function setStorylinesLen(len) {
+  storylinesLen = len;
+  document.querySelectorAll('#storylinesLengthToggle .seg-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.slen === len));
+}
+function setTeamStorylinesLen(len) {
+  teamStorylinesLen = len;
+  document.querySelectorAll('#teamStorylinesLengthToggle .seg-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.slen === len));
+}
+
 function setTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.tab-pane').forEach(p => p.style.display = p.id === `tab-${tab}` ? '' : 'none');
@@ -944,8 +969,8 @@ function updateTeamTabStyle() {
   if (!btn) return;
   if (myTeam) {
     const color = TEAM_COLORS[myTeam.abbreviation] || '#f5a623';
-    btn.style.background   = hexToRgba(color, 0.15);
-    btn.style.borderColor  = hexToRgba(color, 0.5);
+    btn.style.background   = hexToRgba(color, 0.25);
+    btn.style.borderColor  = hexToRgba(color, 0.75);
     btn.style.color        = brightColor(color);
   } else {
     btn.style.background  = '';
@@ -1002,7 +1027,7 @@ async function loadTeamStorylines() {
     const res = await fetch('/api/team-storylines', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ team: myTeam }),
+      body: JSON.stringify({ team: myTeam, length: teamStorylinesLen }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

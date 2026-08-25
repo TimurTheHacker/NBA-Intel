@@ -25,23 +25,35 @@ async function fetchWebContext(game, isPregame) {
     const home = game.home_team.full_name;
 
     if (isPregame) {
-      // Two parallel searches: game preview + injury/recent-form intel
-      const [preview, injuries] = await Promise.all([
+      const bdlKey = process.env.BALLDONTLIE_API_KEY;
+      const [preview, injuryData] = await Promise.all([
         serper(
           game.postseason && game.playoff_round_name && game.playoff_game_number != null
             ? `${away} vs ${home} ${game.playoff_round_name} Game ${game.playoff_game_number} ${gameYear} NBA preview prediction`
             : `${away} vs ${home} NBA ${game.date} preview prediction`,
           5
         ),
-        serper(`${away} ${home} NBA injury report lineup ${gameYear}`, 4),
+        bdlKey ? fetch(
+          `https://api.balldontlie.io/nba/v1/player_injuries?team_ids[]=${game.home_team.id}&team_ids[]=${game.visitor_team.id}&per_page=10`,
+          { headers: { 'Authorization': bdlKey } }
+        ).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
       ]);
 
       const toSnippets = (data, limit) =>
         (data?.organic || []).slice(0, limit).map(r => `- ${r.title}: ${r.snippet}`).filter(Boolean);
 
-      const snippets = [...toSnippets(preview, 3), ...toSnippets(injuries, 3)].join('\n');
-      return snippets
-        ? `\nWeb context (preview articles, injury reports, recent form — use to sharpen your prediction):\n${snippets}`
+      const injuryLines = (injuryData?.data || []).slice(0, 8).map(i => {
+        const name = `${i.player?.first_name || ''} ${i.player?.last_name || ''}`.trim();
+        const team = i.team?.abbreviation || '';
+        const status = i.status || 'out';
+        const ret = i.return_date ? `, exp. return ${i.return_date}` : '';
+        return name ? `- ${name} (${team}): ${status}${ret}` : null;
+      }).filter(Boolean).join('\n');
+
+      const previewSnippets = toSnippets(preview, 4).join('\n');
+      const parts = [previewSnippets, injuryLines ? `Injury report:\n${injuryLines}` : ''].filter(Boolean);
+      return parts.length
+        ? `\nWeb context (preview articles, verified injury report — use to sharpen your prediction):\n${parts.join('\n\n')}`
         : '';
     }
 
@@ -169,8 +181,8 @@ GAME DATA${isPregame ? ' (matchup context — no score yet)' : ' (ground truth �
 ${webContext}
 ${isShort
   ? isPregame
-    ? `Write a single sharp paragraph (3–5 sentences): lead with the central narrative or stakes, name the decisive factor (a matchup edge, a player to watch, momentum, or home-court impact), and close with a punchy take on who controls this and why. No headers.`
-    : `Write a single sharp paragraph (3–5 sentences) capturing: the result or stakes, one key storyline weaving in current public reaction or coverage where available, and a punchy closing take. Stick strictly to what the data tells you. No headers.`
+    ? `Write 1–2 punchy sentences: the central narrative, who has the edge, and why. No headers.`
+    : `Write 1–2 punchy sentences: the result and the single biggest takeaway. Stick to the data. No headers.`
   : isPregame
     ? `Write 3–4 paragraphs covering:
 1. The narrative and stakes heading in — momentum, series or season context, what each team needs
@@ -199,7 +211,7 @@ Write in the style of a sharp, confident sports broadcaster.${isPregame ? '\n\nE
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: isShort ? 300 : 1024,
+        max_tokens: isShort ? 120 : 1024,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),
