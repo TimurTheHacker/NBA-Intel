@@ -42,14 +42,14 @@ export default async function handler(req) {
       const toSnippets = (data, limit) =>
         (data?.organic || []).slice(0, limit).map(r => `- ${r.title}: ${r.snippet}`).filter(Boolean);
 
-      const [news, roster] = await Promise.all([
+      const [news, moves] = await Promise.all([
         serper(`${team.full_name} NBA ${month} ${year}`),
-        serper(`${team.full_name} NBA roster injuries news ${year}`),
+        serper(`${team.full_name} NBA trade signing draft performance ${year}`),
       ]);
 
       const parts = [
         toSnippets(news, 4).join('\n'),
-        toSnippets(roster, 3).join('\n'),
+        toSnippets(moves, 3).join('\n'),
       ].filter(Boolean);
 
       if (parts.length) webContext = `Current ${team.full_name} news:\n\n${parts.join('\n\n')}`;
@@ -58,11 +58,11 @@ export default async function handler(req) {
 
   const prompt = `You are a sharp NBA insider with deep knowledge of the ${team.full_name} (${team.abbreviation}). Based on the news below, write a tight briefing on what is happening with this team right now.
 
-Write ONE paragraph of 5–6 sentences covering: the team's current situation (record, form, or offseason status), the biggest storyline surrounding them, and what fans should be watching for next. Match the tone to where the team actually stands — for contenders, be bold and championship-focused; for playoff-bubble teams, explore what separates them from the next level; for rebuilding teams, be honest about the timeline but highlight the genuine upside in their young core or front-office moves. Always forward-looking, specific, and grounded. Write like a polished press release — no headers, no labels, just the paragraph.
+Write ONE paragraph of 5–6 sentences. Lead with the team's identity and what makes them compelling right now — their star power, system, depth, or trajectory. Cover the biggest current storyline, then close with a confident, forward-looking take on what they can achieve. The tone should always be energized and fan-facing: celebrate what's working, contextualize what isn't, and leave the reader excited. For elite teams, be bold about their ceiling. For rebuilding teams, make the upside feel real and near. Never sound like an obituary. Write like a polished press release — no headers, no labels, just the paragraph.
 
 ${webContext || `No current news available — use the most relevant recent context you know about the ${team.full_name}.`}
 
-Rules: rely on the news above as your primary source; max 120 words; no run-on sentences.`;
+Rules: rely on the news above as your primary source; max 120 words; no run-on sentences; prioritize storylines about performance, roster moves, standings, and team identity — only mention injuries if a star player is out and it materially changes the team's outlook.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
