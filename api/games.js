@@ -29,14 +29,6 @@ function looksLikePlayoff(dateStr) {
   return false;
 }
 
-// NBA preseason runs early-to-mid October, before the regular season tips off.
-function looksLikePreseason(dateStr) {
-  const d     = new Date(dateStr);
-  const month = d.getMonth() + 1;
-  const day   = d.getDate();
-  return month === 10 && day <= 20;
-}
-
 // Derive round from Game 1 date of the series
 function deriveRound(dateStr) {
   if (!dateStr) return 1;
@@ -232,20 +224,29 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Provide ?date=YYYY-MM-DD or ?start_date=&end_date=' });
   }
 
-  const params = new URLSearchParams({ per_page: '50' });
+  const baseParams = new URLSearchParams({ per_page: '50' });
   if (date) {
-    params.append('dates[]', date);
+    baseParams.append('dates[]', date);
   } else {
     const s = new Date(start_date), e = new Date(end_date);
     const diff = (e - s) / 86400000;
     if (diff < 0)  return res.status(400).json({ error: 'end_date must be after start_date' });
     if (diff > 30) return res.status(400).json({ error: 'Date range cannot exceed 30 days' });
-    params.append('start_date', start_date);
-    params.append('end_date', end_date);
+    baseParams.append('start_date', start_date);
+    baseParams.append('end_date', end_date);
   }
 
+  // BDL excludes preseason games unless season_type=preseason is explicitly
+  // passed, and that param excludes everything else when present — so we
+  // fetch both in parallel and merge, the only way to show both automatically.
+  const preseasonParams = new URLSearchParams(baseParams);
+  preseasonParams.append('season_type', 'preseason');
+
   try {
-    const bdlRes  = await bdlFetch(`/games?${params.toString()}`);
+    const [bdlRes, preseasonRes] = await Promise.all([
+      bdlFetch(`/games?${baseParams.toString()}`),
+      bdlFetch(`/games?${preseasonParams.toString()}`),
+    ]);
     const bdlText = await bdlRes.text();
     if (!bdlRes.ok) {
       const errData = bdlText.trim().startsWith('{') ? JSON.parse(bdlText) : {};
@@ -256,19 +257,26 @@ module.exports = async function handler(req, res) {
     }
     const data = JSON.parse(bdlText);
 
+    // Preseason fetch is best-effort — ignore quietly if it fails or the
+    // plan doesn't support season_type.
+    let preseasonData = [];
+    try {
+      const preseasonText = await preseasonRes.text();
+      if (preseasonRes.ok && preseasonText.trim().startsWith('{')) {
+        preseasonData = JSON.parse(preseasonText).data || [];
+      }
+    } catch {}
+
     // Spread into new objects so we can safely mutate
     const games = (data.data || []).map(g => ({ ...g }));
+    const preseasonGames = preseasonData.map(g => ({ ...g, preseason: true }));
 
-    // Tag preseason, then apply date-based playoff detection. A preseason game
-    // is never a playoff game, so the preseason check wins.
+    // Apply date-based playoff detection to the regular/postseason batch only.
     games.forEach(g => {
-      if (looksLikePreseason(g.date)) {
-        g.preseason  = true;
-        g.postseason = false;
-      } else if (!g.postseason && looksLikePlayoff(g.date)) {
-        g.postseason = true;
-      }
+      if (!g.postseason && looksLikePlayoff(g.date)) g.postseason = true;
     });
+
+    games.push(...preseasonGames);
 
     const playoffGames = games.filter(g => g.postseason);
 
