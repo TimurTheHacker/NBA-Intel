@@ -113,7 +113,9 @@ export default async function handler(req) {
   const isComplete = game.status === 'Final' || game.status === 'Final/OT';
   const isPregame  = statusLabel.startsWith('Scheduled');
 
-  let playoffContext = game.postseason ? 'Postseason (playoffs)\n' : 'Regular season\n';
+  let playoffContext = game.preseason
+    ? 'Preseason (exhibition — results do not count toward the standings; focus on rotations, new additions, young players and conditioning rather than stakes)\n'
+    : game.postseason ? 'Postseason (playoffs)\n' : 'Regular season\n';
   if (game.postseason) {
     if (game.playoff_round_name) {
       playoffContext += `- Round: ${game.playoff_round_name}\n`;

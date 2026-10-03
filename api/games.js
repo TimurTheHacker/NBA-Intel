@@ -29,6 +29,14 @@ function looksLikePlayoff(dateStr) {
   return false;
 }
 
+// NBA preseason runs early-to-mid October, before the regular season tips off.
+function looksLikePreseason(dateStr) {
+  const d     = new Date(dateStr);
+  const month = d.getMonth() + 1;
+  const day   = d.getDate();
+  return month === 10 && day <= 20;
+}
+
 // Derive round from Game 1 date of the series
 function deriveRound(dateStr) {
   if (!dateStr) return 1;
@@ -219,12 +227,15 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { date, start_date, end_date } = req.query;
+  const { date, start_date, end_date, preseason } = req.query;
   if (!date && !(start_date && end_date)) {
     return res.status(400).json({ error: 'Provide ?date=YYYY-MM-DD or ?start_date=&end_date=' });
   }
 
+  const wantPreseason = preseason === 'true' || preseason === '1';
+
   const params = new URLSearchParams({ per_page: '50' });
+  if (wantPreseason) params.append('season_type', 'preseason');
   if (date) {
     params.append('dates[]', date);
   } else {
@@ -251,9 +262,15 @@ module.exports = async function handler(req, res) {
     // Spread into new objects so we can safely mutate
     const games = (data.data || []).map(g => ({ ...g }));
 
-    // Apply date-based playoff detection before anything else
+    // Tag preseason, then apply date-based playoff detection. A preseason game
+    // is never a playoff game, so the preseason check wins.
     games.forEach(g => {
-      if (!g.postseason && looksLikePlayoff(g.date)) g.postseason = true;
+      if (wantPreseason || looksLikePreseason(g.date)) {
+        g.preseason  = true;
+        g.postseason = false;
+      } else if (!g.postseason && looksLikePlayoff(g.date)) {
+        g.postseason = true;
+      }
     });
 
     const playoffGames = games.filter(g => g.postseason);
