@@ -200,14 +200,6 @@ input[type="date"]:focus { border-color: var(--accent); }
 .sbar-status { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--muted2); font-family: 'DM Mono', monospace; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; white-space: nowrap; }
 .sbar-arrow { color: var(--accent); font-size: 10px; flex-shrink: 0; }
 
-/* ── Checkbox ── */
-.check-field { display: flex; align-items: center; gap: 8px; height: 38px; align-self: flex-end; cursor: pointer; user-select: none; white-space: nowrap; }
-.check-field input[type="checkbox"] { appearance: none; width: 17px; height: 17px; border: 1px solid var(--border2); border-radius: 4px; background: var(--surface2); cursor: pointer; flex-shrink: 0; transition: all 0.15s; position: relative; }
-.check-field input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
-.check-field input[type="checkbox"]:checked::after { content: '✓'; position: absolute; inset: 0; display: grid; place-items: center; color: #000; font-size: 12px; font-weight: 700; }
-.check-field span { font-size: 12px; font-weight: 600; color: var(--muted2); }
-.check-field:hover span { color: var(--text); }
-
 /* ── Tab Bar ── */
 .tab-bar { display: flex; gap: 8px; margin-bottom: 28px; }
 .tab-btn { flex: 1; height: 42px; border: 1px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.18s; background: transparent; color: var(--muted); letter-spacing: 0.3px; }
@@ -249,7 +241,7 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.47</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.48</p>
     </div>
   </header>
 
@@ -286,10 +278,6 @@ select:focus { border-color: var(--accent); }
           <button class="seg-tab" data-len="long" onclick="setLength('long')">Long</button>
         </div>
       </div>
-      <label class="check-field">
-        <input type="checkbox" id="preseasonCheck" />
-        <span>Preseason</span>
-      </label>
       <button class="btn btn-ghost" onclick="setToday()">Today</button>
       <button class="btn btn-primary" id="searchBtn" onclick="fetchGames()">Search</button>
     </div>
@@ -442,14 +430,12 @@ async function fetchGames() {
   hideAnalysis();
   showLoading('gamesWrap', 'Fetching games…');
 
-  const pre = document.getElementById('preseasonCheck').checked ? '&preseason=true' : '';
-
   let url, label;
   try {
     if (mode === 'single') {
       const date = document.getElementById('singleDate').value;
       if (!date) { alert('Select a date.'); return; }
-      url   = `/api/games?date=${date}${pre}`;
+      url   = `/api/games?date=${date}`;
       label = formatDate(date);
     } else {
       const start = document.getElementById('startDate').value;
@@ -458,7 +444,7 @@ async function fetchGames() {
       const diff = (new Date(end) - new Date(start)) / 86400000;
       if (diff < 0)  { showError('gamesWrap', 'End date must be after start date.'); return; }
       if (diff > 30) { showError('gamesWrap', 'Date range cannot exceed 30 days.'); return; }
-      url   = `/api/games?start_date=${start}&end_date=${end}${pre}`;
+      url   = `/api/games?start_date=${start}&end_date=${end}`;
       label = `${formatDate(start)} – ${formatDate(end)}`;
     }
 

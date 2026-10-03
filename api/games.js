@@ -227,15 +227,12 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { date, start_date, end_date, preseason } = req.query;
+  const { date, start_date, end_date } = req.query;
   if (!date && !(start_date && end_date)) {
     return res.status(400).json({ error: 'Provide ?date=YYYY-MM-DD or ?start_date=&end_date=' });
   }
 
-  const wantPreseason = preseason === 'true' || preseason === '1';
-
   const params = new URLSearchParams({ per_page: '50' });
-  if (wantPreseason) params.append('season_type', 'preseason');
   if (date) {
     params.append('dates[]', date);
   } else {
@@ -265,7 +262,7 @@ module.exports = async function handler(req, res) {
     // Tag preseason, then apply date-based playoff detection. A preseason game
     // is never a playoff game, so the preseason check wins.
     games.forEach(g => {
-      if (wantPreseason || looksLikePreseason(g.date)) {
+      if (looksLikePreseason(g.date)) {
         g.preseason  = true;
         g.postseason = false;
       } else if (!g.postseason && looksLikePlayoff(g.date)) {
