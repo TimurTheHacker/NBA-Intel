@@ -95,7 +95,8 @@ Rules: rely on the news above as your primary source; exactly 2 SIDE items; each
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
+        model: 'claude-sonnet-5-5',
+        thinking: { type: 'between_tools' },
         max_tokens: isLong ? 1800 : 850,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
