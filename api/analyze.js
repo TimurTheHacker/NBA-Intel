@@ -183,8 +183,8 @@ GAME DATA${isPregame ? ' (matchup context — no score yet)' : ' (ground truth �
 ${webContext}
 ${isShort
   ? isPregame
-    ? `Write 1–2 punchy sentences: the central narrative, who has the edge, and why. No headers.`
-    : `Write 1–2 punchy sentences: the result and the single biggest takeaway. Stick to the data. No headers.`
+    ? `Write 3–4 punchy sentences: the central narrative, who has the edge, and why. No headers.`
+    : `Write 3–4 punchy sentences: the result and the biggest takeaway. Stick to the data. No headers.`
   : isPregame
     ? `Write 3–4 paragraphs covering:
 1. The narrative and stakes heading in — momentum, series or season context, what each team needs
@@ -213,7 +213,7 @@ Write in the style of a sharp, confident sports broadcaster.${isPregame ? '\n\nE
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: isShort ? 120 : 1024,
+        max_tokens: isShort ? 220 : 1024,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),
