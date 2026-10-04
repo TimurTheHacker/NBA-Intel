@@ -213,7 +213,7 @@ Write in the style of a sharp, confident sports broadcaster.${isPregame ? '\n\nE
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: isShort ? 220 : 1024,
+        max_tokens: isShort ? 350 : 1024,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),
