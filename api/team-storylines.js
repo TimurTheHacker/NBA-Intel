@@ -76,7 +76,7 @@ Rules: rely on the news above as your primary source; max ${isLong ? '260' : '14
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5',
         max_tokens: isLong ? 650 : 300,
         stream: true,
         messages: [{ role: 'user', content: prompt }],

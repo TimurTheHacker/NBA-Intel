@@ -169,7 +169,7 @@ export default async function handler(req) {
 
   const isShort = length === 'short';
 
-  const prompt = `You are an expert NBA analyst.${isPregame
+  const prompt = `You are an expert NBA analyst. Player rosters change constantly via trades and free agency — never state which team a player is currently on from memory alone. Only name a player, and only attach them to a team, if that pairing is explicitly confirmed by the GAME DATA (matchup teams, top scorers list) or the Web context below. If you are not certain a player is still on a given roster, leave them out entirely rather than guess.${isPregame
   ? ` This game has not yet been played. Rely primarily on the Web context below for current team information — rosters, injuries, recent form, and storylines. Use your own knowledge only for general strategic tendencies and historical matchup patterns; do not state specific current facts (players, venues, records) that aren't backed by the web context.`
   : ` For the GAME DATA below, rely strictly on what is provided — do not invent stats, series results, or outcomes not stated here. Where Web context is present, incorporate real-world details, analyst takes, and public reaction into your analysis.`}
 
@@ -212,7 +212,7 @@ Write in the style of a sharp, confident sports broadcaster.${isPregame ? '\n\nE
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5',
         max_tokens: isShort ? 220 : 1024,
         stream: true,
         messages: [{ role: 'user', content: prompt }],
