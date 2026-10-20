@@ -46,8 +46,8 @@ export default async function handler(req) {
       // widens to the past month if the week is quiet.
       const SEARCHES = [
         { label: 'Headlines', q: team.full_name },
-        { label: 'Players',   q: `${team.full_name} (injury OR trade OR signing OR extension OR star)` },
-        { label: 'Team',      q: `${team.full_name} (record OR roster OR rotation OR coach OR season)` },
+        { label: 'Players',   q: `${team.full_name} (injury OR trade OR signing OR extension OR star OR coach)` },
+        { label: 'Team',      q: `${team.full_name} (record OR roster OR rotation OR season)` },
       ];
       const results = await Promise.all(SEARCHES.map(async s => {
         const week = clean(await news(s.q, 'qdr:w'));

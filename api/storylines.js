@@ -35,8 +35,8 @@ export default async function handler(req) {
       // to the past month if the week is quiet.
       const SEARCHES = [
         { label: 'League',  q: 'NBA' },
-        { label: 'Players', q: 'NBA player (injury OR trade OR draft OR signing OR extension)' },
-        { label: 'Teams',   q: 'NBA team (record OR roster OR rebuild OR contender OR legacy OR coach)' },
+        { label: 'Players', q: 'NBA (player OR coach) (injury OR trade OR draft OR signing OR extension OR hired OR fired)' },
+        { label: 'Teams',   q: 'NBA team (record OR roster OR rebuild OR contender OR legacy)' },
       ];
       const results = await Promise.all(SEARCHES.map(async s => {
         const week = clean(await news(s.q));
@@ -67,7 +67,7 @@ MAIN
 [One tight paragraph: ${isLong ? '10–13' : '6–7'} sentences, max ${isLong ? '250' : '130'} words. Cover the single biggest NBA storyline right now, drawn from the [League] news. Specific and opinionated.]
 
 SIDE: [Short punchy title]
-[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words. A player story drawn from the [Players] news.]
+[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words. A player or coach story drawn from the [Players] news.]
 
 SIDE: [Short punchy title]
 [One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words. A team story drawn from the [Teams] news.]
