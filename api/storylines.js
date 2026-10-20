@@ -25,10 +25,26 @@ export default async function handler(req) {
         body: JSON.stringify({ q, num: 10, tbs }),
       }).then(r => r.ok ? r.json() : null).then(d => d?.news || []).catch(() => []);
 
+      // Serper dates are relative ("3 hours ago", "2 weeks ago") but can be absolute
+      // ("Oct 17, 2026"); convert either to a timestamp.
+      const DAY  = 864e5;
+      const UNIT = { min: 6e4, minute: 6e4, hour: 36e5, day: DAY, week: 7 * DAY, month: 30 * DAY, year: 365 * DAY };
+      const publishedAt = s => {
+        if (!s) return null;
+        if (/just now/i.test(s)) return Date.now();
+        if (/yesterday/i.test(s)) return Date.now() - DAY;
+        const m = s.match(/(\d+|an?)\s*(min|minute|hour|day|week|month|year)s?\s+ago/i);
+        if (m) return Date.now() - (/^an?$/i.test(m[1]) ? 1 : +m[1]) * UNIT[m[2].toLowerCase()];
+        const t = Date.parse(s);
+        return isNaN(t) ? null : t;
+      };
+      const isRecent = r => publishedAt(r.date) > Date.now() - 2 * DAY;
+      const isOld    = r => { const t = publishedAt(r.date); return t != null && t < Date.now() - 10 * DAY; };
+
       const JUNK = /fantasy|betting|\bodds\b|parlay|\bdfs\b|best bets|\bprops?\b/i;
       const clean = items => items.filter(r => r.title && !JUNK.test(r.title));
       const toSnippets = items =>
-        items.map(r => `- ${r.title}${r.date ? ` (${r.date})` : ''}: ${r.snippet || ''}`);
+        items.map(r => `- ${isOld(r) ? '[OLD] ' : ''}${r.title}${r.date ? ` (${r.date})` : ''}: ${r.snippet || ''}`);
       const words = t => new Set(t.toLowerCase().match(/[a-z]{4,}/g) || []);
 
       // Three angles on the league. None is tied to a time of year; each widens
@@ -59,13 +75,13 @@ export default async function handler(req) {
 
       // Recent: anything from the last 48 hours across all three searches, pulled
       // out first so a fresh story can't be crowded out by bigger names.
-      const isRecent = r => /just now|\b(mins?|minutes?|hours?) ago\b|\b1 day ago\b/i.test(r.date || '');
       const recent = take(results.flat().filter(isRecent), 5);
 
       const sections = [
         recent.length && `[Recent — last 48 hours]\n${toSnippets(recent).join('\n')}`,
         ...SEARCHES.map((s, i) => {
-          const kept = take(results[i], 4);
+          // Old stories go last so they only fill slots fresher news can't
+          const kept = take([...results[i]].sort((a, b) => isOld(a) - isOld(b)), 4);
           return kept.length && `[${s.label}]\n${toSnippets(kept).join('\n')}`;
         }),
       ].filter(Boolean);
@@ -87,7 +103,7 @@ SIDE: [Short punchy title]
 
 ${webContext || 'No current news could be loaded. Do not state any specific recent events, trades, or results — write MAIN as one sentence saying fresh news is unavailable, and skip the SIDE items.'}
 
-Rules: rely on the news above as your primary source; rank stories by significance, not name recognition — a season-altering injury, a major trade, or a firing outranks routine performance news; a significant story under [Recent] takes the slot it fits (MAIN if it is the biggest story overall, otherwise the matching SIDE); if a news section is missing, use the strongest remaining story instead; exactly 2 SIDE items; each item must cover a DIFFERENT topic — never repeat or overlap with another section (e.g. if MAIN is about the Finals, SIDE items must cover different subjects like trades, a player situation, coaching news, etc.); no run-on sentences; write like a polished press release.`;
+Rules: rely on the news above as your primary source; rank stories by significance, not name recognition — a season-altering injury, a major trade, or a firing outranks routine performance news; a significant story under [Recent] takes the slot it fits (MAIN if it is the biggest story overall, otherwise the matching SIDE); headlines marked [OLD] are more than 10 days old — use them only as background context, never as the subject of MAIN or a SIDE item; if a news section is missing, use the strongest remaining story instead; exactly 2 SIDE items; each item must cover a DIFFERENT topic — never repeat or overlap with another section (e.g. if MAIN is about the Finals, SIDE items must cover different subjects like trades, a player situation, coaching news, etc.); no run-on sentences; write like a polished press release.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
