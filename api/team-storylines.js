@@ -38,21 +38,35 @@ export default async function handler(req) {
 
       const JUNK = /fantasy|betting|\bodds\b|parlay|\bdfs\b|best bets|\bprops?\b/i;
       const clean = items => items.filter(r => r.title && !JUNK.test(r.title));
-      const toSnippets = (items, limit) =>
-        items.slice(0, limit).map(r => `- ${r.title}${r.date ? ` (${r.date})` : ''}: ${r.snippet || ''}`);
+      const toSnippets = items =>
+        items.map(r => `- ${r.title}${r.date ? ` (${r.date})` : ''}: ${r.snippet || ''}`);
+      const words = t => new Set(t.toLowerCase().match(/[a-z]{4,}/g) || []);
 
-      // This week's coverage, plus the rest of the month for star/season context
-      const [week, recent] = await Promise.all([
-        news(team.full_name, 'qdr:w').then(clean),
-        news(team.full_name, 'qdr:m').then(clean),
-      ]);
-      const seen  = new Set(week.map(r => r.title));
-      const older = recent.filter(r => !seen.has(r.title));
+      // Same three angles as the league storylines, scoped to this team. Each
+      // widens to the past month if the week is quiet.
+      const SEARCHES = [
+        { label: 'Headlines', q: team.full_name },
+        { label: 'Players',   q: `${team.full_name} (injury OR trade OR signing OR extension OR star)` },
+        { label: 'Team',      q: `${team.full_name} (record OR roster OR rotation OR coach OR season)` },
+      ];
+      const results = await Promise.all(SEARCHES.map(async s => {
+        const week = clean(await news(s.q, 'qdr:w'));
+        return week.length ? week : clean(await news(s.q, 'qdr:m'));
+      }));
 
-      const sections = [
-        week.length  && `[This week]\n${toSnippets(week, 6).join('\n')}`,
-        older.length && `[Earlier this month]\n${toSnippets(older, 4).join('\n')}`,
-      ].filter(Boolean);
+      // Keep the sections distinct: skip any headline that repeats one already used.
+      const used = [];
+      const sections = SEARCHES.map((s, i) => {
+        const kept = [];
+        for (const r of results[i]) {
+          const w = words(r.title);
+          if (used.some(u => [...w].filter(x => u.has(x)).length >= 3)) continue;
+          used.push(w);
+          kept.push(r);
+          if (kept.length === 4) break;
+        }
+        return kept.length && `[${s.label}]\n${toSnippets(kept).join('\n')}`;
+      }).filter(Boolean);
 
       if (sections.length) webContext = `Current ${team.full_name} news:\n\n${sections.join('\n\n')}`;
     } catch {}

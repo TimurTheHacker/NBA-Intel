@@ -27,28 +27,35 @@ export default async function handler(req) {
 
       const JUNK = /fantasy|betting|\bodds\b|parlay|\bdfs\b|best bets|\bprops?\b/i;
       const clean = items => items.filter(r => r.title && !JUNK.test(r.title));
-      const toSnippets = (items, limit) =>
-        items.slice(0, limit).map(r => `- ${r.title}${r.date ? ` (${r.date})` : ''}: ${r.snippet || ''}`);
-
-      // Round 1: whatever is dominating NBA news this week (widen to a month if quiet)
-      let headlines = clean(await news('NBA'));
-      if (!headlines.length) headlines = clean(await news('NBA', 'qdr:m'));
-
-      // Round 2: dig into the two most distinct headlines. Follow-up queries come
-      // from the news itself, so nothing is tied to a time of year.
+      const toSnippets = items =>
+        items.map(r => `- ${r.title}${r.date ? ` (${r.date})` : ''}: ${r.snippet || ''}`);
       const words = t => new Set(t.toLowerCase().match(/[a-z]{4,}/g) || []);
-      const picked = [];
-      for (const h of headlines) {
-        const w = words(h.title);
-        if (picked.every(p => [...w].filter(x => p.w.has(x)).length < 2)) picked.push({ title: h.title, w });
-        if (picked.length === 2) break;
-      }
-      const followUps = await Promise.all(picked.map(p => news(p.title).then(clean)));
 
-      const sections = [
-        headlines.length && `[Headlines]\n${toSnippets(headlines, 6).join('\n')}`,
-        ...followUps.map((items, i) => items.length && `[Deep dive — ${picked[i].title}]\n${toSnippets(items, 3).join('\n')}`),
-      ].filter(Boolean);
+      // Three angles on the league. None is tied to a time of year; each widens
+      // to the past month if the week is quiet.
+      const SEARCHES = [
+        { label: 'League',  q: 'NBA' },
+        { label: 'Players', q: 'NBA player (injury OR trade OR draft OR signing OR extension)' },
+        { label: 'Teams',   q: 'NBA team (record OR roster OR rebuild OR contender OR legacy OR coach)' },
+      ];
+      const results = await Promise.all(SEARCHES.map(async s => {
+        const week = clean(await news(s.q));
+        return week.length ? week : clean(await news(s.q, 'qdr:m'));
+      }));
+
+      // Keep the sections distinct: skip any headline that repeats one already used.
+      const used = [];
+      const sections = SEARCHES.map((s, i) => {
+        const kept = [];
+        for (const r of results[i]) {
+          const w = words(r.title);
+          if (used.some(u => [...w].filter(x => u.has(x)).length >= 3)) continue;
+          used.push(w);
+          kept.push(r);
+          if (kept.length === 4) break;
+        }
+        return kept.length && `[${s.label}]\n${toSnippets(kept).join('\n')}`;
+      }).filter(Boolean);
 
       if (sections.length) webContext = `Current NBA news (past week):\n\n${sections.join('\n\n')}`;
     } catch {}
@@ -57,17 +64,17 @@ export default async function handler(req) {
   const prompt = `You are a sharp NBA insider. Report the biggest current storylines, prioritizing the most current and biggest news over theories, older news, and stories of less importance. Based on the current news below, produce a structured storylines briefing in EXACTLY this format — no deviations, no extra headers:
 
 MAIN
-[One tight paragraph: ${isLong ? '10–13' : '6–7'} sentences, max ${isLong ? '250' : '130'} words. Cover the single biggest NBA storyline dominating every conversation right now. Specific and opinionated.]
+[One tight paragraph: ${isLong ? '10–13' : '6–7'} sentences, max ${isLong ? '250' : '130'} words. Cover the single biggest NBA storyline right now, drawn from the [League] news. Specific and opinionated.]
 
 SIDE: [Short punchy title]
-[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words.]
+[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words. A player story drawn from the [Players] news.]
 
 SIDE: [Short punchy title]
-[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words.]
+[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words. A team story drawn from the [Teams] news.]
 
 ${webContext || 'No current news could be loaded. Do not state any specific recent events, trades, or results — write MAIN as one sentence saying fresh news is unavailable, and skip the SIDE items.'}
 
-Rules: rely on the news above as your primary source; exactly 2 SIDE items; each item must cover a DIFFERENT topic — never repeat or overlap with another section (e.g. if MAIN is about the Finals, SIDE items must cover different subjects like trades, a player situation, coaching news, etc.); no run-on sentences; write like a polished press release.`;
+Rules: rely on the news above as your primary source; if a news section is missing, use the strongest remaining story instead; exactly 2 SIDE items; each item must cover a DIFFERENT topic — never repeat or overlap with another section (e.g. if MAIN is about the Finals, SIDE items must cover different subjects like trades, a player situation, coaching news, etc.); no run-on sentences; write like a polished press release.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
