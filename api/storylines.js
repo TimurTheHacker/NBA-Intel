@@ -45,17 +45,30 @@ export default async function handler(req) {
 
       // Keep the sections distinct: skip any headline that repeats one already used.
       const used = [];
-      const sections = SEARCHES.map((s, i) => {
+      const take = (items, max) => {
         const kept = [];
-        for (const r of results[i]) {
+        for (const r of items) {
           const w = words(r.title);
           if (used.some(u => [...w].filter(x => u.has(x)).length >= 3)) continue;
           used.push(w);
           kept.push(r);
-          if (kept.length === 4) break;
+          if (kept.length === max) break;
         }
-        return kept.length && `[${s.label}]\n${toSnippets(kept).join('\n')}`;
-      }).filter(Boolean);
+        return kept;
+      };
+
+      // Recent: anything from the last 48 hours across all three searches, pulled
+      // out first so a fresh story can't be crowded out by bigger names.
+      const isRecent = r => /just now|\b(mins?|minutes?|hours?) ago\b|\b1 day ago\b/i.test(r.date || '');
+      const recent = take(results.flat().filter(isRecent), 5);
+
+      const sections = [
+        recent.length && `[Recent — last 48 hours]\n${toSnippets(recent).join('\n')}`,
+        ...SEARCHES.map((s, i) => {
+          const kept = take(results[i], 4);
+          return kept.length && `[${s.label}]\n${toSnippets(kept).join('\n')}`;
+        }),
+      ].filter(Boolean);
 
       if (sections.length) webContext = `Current NBA news (past week):\n\n${sections.join('\n\n')}`;
     } catch {}
@@ -64,17 +77,17 @@ export default async function handler(req) {
   const prompt = `You are a sharp NBA insider. Report the biggest current storylines, prioritizing the most current and biggest news over theories, older news, and stories of less importance. Based on the current news below, produce a structured storylines briefing in EXACTLY this format — no deviations, no extra headers:
 
 MAIN
-[One tight paragraph: ${isLong ? '10–13' : '6–7'} sentences, max ${isLong ? '250' : '130'} words. Cover the single biggest NBA storyline right now, drawn from the [League] news. Specific and opinionated.]
+[One tight paragraph: ${isLong ? '10–13' : '6–7'} sentences, max ${isLong ? '250' : '130'} words. Cover the single biggest NBA storyline right now, drawn from the [League] or [Recent] news. Specific and opinionated.]
 
 SIDE: [Short punchy title]
-[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words. A player or coach story drawn from the [Players] news.]
+[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words. A player or coach story drawn from the [Players] or [Recent] news.]
 
 SIDE: [Short punchy title]
-[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words. A team story drawn from the [Teams] news.]
+[One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words. A team story drawn from the [Teams] or [Recent] news.]
 
 ${webContext || 'No current news could be loaded. Do not state any specific recent events, trades, or results — write MAIN as one sentence saying fresh news is unavailable, and skip the SIDE items.'}
 
-Rules: rely on the news above as your primary source; if a news section is missing, use the strongest remaining story instead; exactly 2 SIDE items; each item must cover a DIFFERENT topic — never repeat or overlap with another section (e.g. if MAIN is about the Finals, SIDE items must cover different subjects like trades, a player situation, coaching news, etc.); no run-on sentences; write like a polished press release.`;
+Rules: rely on the news above as your primary source; rank stories by significance, not name recognition — a season-altering injury, a major trade, or a firing outranks routine performance news; a significant story under [Recent] takes the slot it fits (MAIN if it is the biggest story overall, otherwise the matching SIDE); if a news section is missing, use the strongest remaining story instead; exactly 2 SIDE items; each item must cover a DIFFERENT topic — never repeat or overlap with another section (e.g. if MAIN is about the Finals, SIDE items must cover different subjects like trades, a player situation, coaching news, etc.); no run-on sentences; write like a polished press release.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
