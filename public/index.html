@@ -241,7 +241,7 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.49</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.50</p>
     </div>
   </header>
 
@@ -721,14 +721,19 @@ async function analyzeGame(gameId) {
     }
 
     text.classList.remove('streaming');
-    // Extract prediction line if present (pre-game analysis only)
+    // Extract prediction line if present (pregame prediction or live projected final)
     {
       const fullText = text.textContent;
       const predMatch = fullText.match(/\nPREDICTION:\s*(.+)/i);
       if (predMatch) {
         text.textContent = fullText.replace(/\n?PREDICTION:\s*.+/i, '').trim();
+        const s = game.status || '';
+        const live = s.includes('Qtr') || s === 'In Progress' || s === 'Halftime';
         const chip = document.getElementById('predictionChip');
-        chip.innerHTML = `<span class="pred-pill">AI Prediction</span>${predMatch[1].trim()}`;
+        const pill = document.createElement('span');
+        pill.className = 'pred-pill';
+        pill.textContent = live ? 'Projected Final' : 'AI Prediction';
+        chip.replaceChildren(pill, document.createTextNode(predMatch[1].trim()));
         chip.style.display = 'flex';
       }
     }

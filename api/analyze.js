@@ -105,9 +105,10 @@ export default async function handler(req) {
     ? `Score: ${game.visitor_team.full_name} ${game.visitor_team_score} – ${game.home_team.full_name} ${game.home_team_score}`
     : 'Game has not started yet or score is unavailable.';
 
+  const isLive = game.status?.includes('Qtr') || game.status === 'In Progress' || game.status === 'Halftime';
   const statusLabel =
     game.status === 'Final' || game.status === 'Final/OT' ? 'Final'
-    : game.status?.includes('Qtr') || game.status === 'In Progress' ? 'Live / In Progress'
+    : isLive ? `Live / In Progress (${[game.status, game.time].filter(Boolean).join(', ')})`
     : `Scheduled (${game.status})`;
 
   const isComplete = game.status === 'Final' || game.status === 'Final/OT';
@@ -169,6 +170,13 @@ export default async function handler(req) {
 
   const isShort = length === 'short';
 
+  const predictionLine = `PREDICTION: ${game.visitor_team.abbreviation} 000 – 000 ${game.home_team.abbreviation}`;
+  const predictionNote = isPregame
+    ? `\n\nEnd with a score prediction on its own line formatted exactly as:\n${predictionLine}\nCommit to the margin the matchup deserves instead of hedging toward a close game — when one team is clearly better, a 20–30 point blowout is a realistic call; evenly matched teams can still be close. No other text on that line.`
+    : isLive
+    ? `\n\nEnd with a projected final score on its own line formatted exactly as:\n${predictionLine}\nBase it on the current score, the time remaining, and momentum — each team's projected total must be at least its current score. No other text on that line.`
+    : '';
+
   const prompt = `You are an expert NBA analyst. Player rosters change constantly via trades and free agency — never state which team a player is currently on from memory alone. Only name a player, and only attach them to a team, if that pairing is explicitly confirmed by the GAME DATA (matchup teams, top scorers list) or the Web context below. If you are not certain a player is still on a given roster, leave them out entirely rather than guess.${isPregame
   ? ` This game has not yet been played. Rely primarily on the Web context below for current team information — rosters, injuries, recent form, and storylines. Use your own knowledge only for general strategic tendencies and historical matchup patterns; do not state specific current facts (players, venues, records) that aren't backed by the web context.`
   : ` For the GAME DATA below, rely strictly on what is provided — do not invent stats, series results, or outcomes not stated here. Where Web context is present, incorporate real-world details, analyst takes, and public reaction into your analysis.`}
@@ -201,7 +209,7 @@ Ground all specific claims in the web context above.`
 
 Important: Only reference facts given above and verified web context. Do not invent player stats, team records, or historical claims you aren't certain of.`}
 
-Write in the style of a sharp, confident sports broadcaster.${isPregame ? '\n\nEnd with a score prediction on its own line formatted exactly as:\nPREDICTION: ' + game.visitor_team.abbreviation + ' 000 – 000 ' + game.home_team.abbreviation + '\nLet the margin reflect the actual matchup — a lopsided game should look lopsided, a tight series should be closer. No other text on that line.' : ''}`;
+Write in the style of a sharp, confident sports broadcaster.${predictionNote}`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
