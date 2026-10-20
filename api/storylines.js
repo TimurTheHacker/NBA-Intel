@@ -19,55 +19,38 @@ export default async function handler(req) {
   const serperKey = process.env.SERPER_API_KEY;
   if (serperKey) {
     try {
-      const now  = new Date();
-      const year = now.getFullYear();
-      const month = now.toLocaleString('en-US', { month: 'long' });
-
-      const serper = (q) => fetch('https://google.serper.dev/search', {
+      const news = (q, tbs = 'qdr:w') => fetch('https://google.serper.dev/news', {
         method: 'POST',
         headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q, num: 5 }),
-      }).then(r => r.ok ? r.json() : null).catch(() => null);
+        body: JSON.stringify({ q, num: 10, tbs }),
+      }).then(r => r.ok ? r.json() : null).then(d => d?.news || []).catch(() => []);
 
-      const toSnippets = (data, limit) =>
-        (data?.organic || []).slice(0, limit).map(r => `- ${r.title}: ${r.snippet}`).filter(Boolean);
+      const JUNK = /fantasy|betting|\bodds\b|parlay|\bdfs\b|best bets|\bprops?\b/i;
+      const clean = items => items.filter(r => r.title && !JUNK.test(r.title));
+      const toSnippets = (items, limit) =>
+        items.slice(0, limit).map(r => `- ${r.title}${r.date ? ` (${r.date})` : ''}: ${r.snippet || ''}`);
 
-      // Round 1: broad search to detect what's actually happening right now
-      const initial = await serper(`NBA news ${month} ${year}`);
-      const initialSnippets = toSnippets(initial, 5);
-      const titleText = (initial?.organic || []).map(r => r.title.toLowerCase()).join(' ');
+      // Round 1: whatever is dominating NBA news this week (widen to a month if quiet)
+      let headlines = clean(await news('NBA'));
+      if (!headlines.length) headlines = clean(await news('NBA', 'qdr:m'));
 
-      // Detect which topics appear in the headlines — pick 2 distinct ones for follow-up
-      const TOPICS = [
-        { key: 'trade',      query: `NBA trades free agency ${year}` },
-        { key: 'draft',      query: `NBA draft ${year} picks` },
-        { key: 'final',      query: `NBA Finals ${year} champion analysis` },
-        { key: 'playoff',    query: `NBA playoffs ${year} series results` },
-        { key: 'injur',      query: `NBA injury report ${year}` },
-        { key: 'sign',       query: `NBA player signings contracts ${year}` },
-        { key: 'retir',      query: `NBA player retirement ${year}` },
-        { key: 'coach',      query: `NBA coaching hire fire ${year}` },
-        { key: 'contract',   query: `NBA contract extension ${year}` },
-        { key: 'standing',   query: `NBA standings highlights ${year}` },
-      ];
-      const FALLBACKS = [
-        `NBA player news ${year}`,
-        `NBA standings season highlights ${year}`,
-      ];
+      // Round 2: dig into the two most distinct headlines. Follow-up queries come
+      // from the news itself, so nothing is tied to a time of year.
+      const words = t => new Set(t.toLowerCase().match(/[a-z]{4,}/g) || []);
+      const picked = [];
+      for (const h of headlines) {
+        const w = words(h.title);
+        if (picked.every(p => [...w].filter(x => p.w.has(x)).length < 2)) picked.push({ title: h.title, w });
+        if (picked.length === 2) break;
+      }
+      const followUps = await Promise.all(picked.map(p => news(p.title).then(clean)));
 
-      const matched = TOPICS.filter(t => titleText.includes(t.key)).slice(0, 2).map(t => t.query);
-      while (matched.length < 2) matched.push(FALLBACKS[matched.length]);
-
-      // Round 2: two targeted deep-dives in parallel
-      const [follow1, follow2] = await Promise.all(matched.map(q => serper(q)));
-
-      const parts = [
-        initialSnippets.join('\n'),
-        toSnippets(follow1, 3).join('\n'),
-        toSnippets(follow2, 3).join('\n'),
+      const sections = [
+        headlines.length && `[Headlines]\n${toSnippets(headlines, 6).join('\n')}`,
+        ...followUps.map((items, i) => items.length && `[Deep dive — ${picked[i].title}]\n${toSnippets(items, 3).join('\n')}`),
       ].filter(Boolean);
 
-      if (parts.length) webContext = `Current NBA news:\n\n[Headlines]\n${parts[0]}${parts[1] ? `\n\n[Deep dive — ${matched[0]}]\n${parts[1]}` : ''}${parts[2] ? `\n\n[Deep dive — ${matched[1]}]\n${parts[2]}` : ''}`;
+      if (sections.length) webContext = `Current NBA news (past week):\n\n${sections.join('\n\n')}`;
     } catch {}
   }
 
@@ -82,7 +65,7 @@ SIDE: [Short punchy title]
 SIDE: [Short punchy title]
 [One tight paragraph: ${isLong ? '8–10' : '5–6'} sentences, max ${isLong ? '190' : '110'} words.]
 
-${webContext || 'No current news available — use the most relevant recent NBA context you are aware of.'}
+${webContext || 'No current news could be loaded. Do not state any specific recent events, trades, or results — write MAIN as one sentence saying fresh news is unavailable, and skip the SIDE items.'}
 
 Rules: rely on the news above as your primary source; exactly 2 SIDE items; each item must cover a DIFFERENT topic — never repeat or overlap with another section (e.g. if MAIN is about the Finals, SIDE items must cover different subjects like trades, a player situation, coaching news, etc.); no run-on sentences; write like a polished press release.`;
 

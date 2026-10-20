@@ -30,32 +30,31 @@ export default async function handler(req) {
   const serperKey = process.env.SERPER_API_KEY;
   if (serperKey) {
     try {
-      const now   = new Date();
-      const year  = now.getFullYear();
-      const month = now.toLocaleString('en-US', { month: 'long' });
-
-      const serper = (q) => fetch('https://google.serper.dev/search', {
+      const news = (q, tbs) => fetch('https://google.serper.dev/news', {
         method: 'POST',
         headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q, num: 5 }),
-      }).then(r => r.ok ? r.json() : null).catch(() => null);
+        body: JSON.stringify({ q, num: 10, tbs }),
+      }).then(r => r.ok ? r.json() : null).then(d => d?.news || []).catch(() => []);
 
-      const toSnippets = (data, limit) =>
-        (data?.organic || []).slice(0, limit).map(r => `- ${r.title}: ${r.snippet}`).filter(Boolean);
+      const JUNK = /fantasy|betting|\bodds\b|parlay|\bdfs\b|best bets|\bprops?\b/i;
+      const clean = items => items.filter(r => r.title && !JUNK.test(r.title));
+      const toSnippets = (items, limit) =>
+        items.slice(0, limit).map(r => `- ${r.title}${r.date ? ` (${r.date})` : ''}: ${r.snippet || ''}`);
 
-      const [news, moves, history] = await Promise.all([
-        serper(`${team.full_name} NBA news ${month} ${year}`),
-        serper(`${team.full_name} NBA performance trade roster moves ${month} ${year}`),
-        serper(`${team.full_name} NBA ${year} season record star players key players`),
+      // This week's coverage, plus the rest of the month for star/season context
+      const [week, recent] = await Promise.all([
+        news(team.full_name, 'qdr:w').then(clean),
+        news(team.full_name, 'qdr:m').then(clean),
       ]);
+      const seen  = new Set(week.map(r => r.title));
+      const older = recent.filter(r => !seen.has(r.title));
 
-      const parts = [
-        toSnippets(news, 4).join('\n'),
-        toSnippets(moves, 3).join('\n'),
-        toSnippets(history, 3).join('\n'),
+      const sections = [
+        week.length  && `[This week]\n${toSnippets(week, 6).join('\n')}`,
+        older.length && `[Earlier this month]\n${toSnippets(older, 4).join('\n')}`,
       ].filter(Boolean);
 
-      if (parts.length) webContext = `Current ${team.full_name} news:\n\n[Headlines]\n${parts[0]}${parts[1] ? `\n\n[Moves & Performance]\n${parts[1]}` : ''}${parts[2] ? `\n\n[Season & Stars]\n${parts[2]}` : ''}`;
+      if (sections.length) webContext = `Current ${team.full_name} news:\n\n${sections.join('\n\n')}`;
     } catch {}
   }
 
@@ -63,7 +62,7 @@ export default async function handler(req) {
 
 Write ONE paragraph of ${isLong ? '10–12' : '6–7'} sentences. Name the team's anchor star(s) naturally — they are the identity. Cover the biggest current storyline. Reference recent history only when it directly shapes the current narrative — for example, a defending champion chasing a repeat, a team bouncing back after missing the playoffs, or a franchise cornerstone recently extended. Do not cite a specific win-loss record unless it is the story right now. Close with a confident, forward-looking take. Always energized and fan-facing: celebrate what is working, contextualize what is not, never sound like an obituary. Write like a polished press release — no headers, no labels, just the paragraph.
 
-${webContext || `No current news available — use the most relevant recent context you know about the ${team.full_name}.`}
+${webContext || `No current news could be loaded — keep it to broad points about the ${team.full_name} and do not state any specific recent events, trades, or results.`}
 
 Rules: rely on the news above as your primary source; max ${isLong ? '260' : '140'} words; no run-on sentences; prioritize storylines about performance, roster moves, standings, and team identity — only mention injuries if a star player is out and it materially changes the team's outlook.`;
 
