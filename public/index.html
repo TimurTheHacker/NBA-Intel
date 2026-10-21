@@ -241,7 +241,7 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.53</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.54</p>
     </div>
   </header>
 
@@ -784,14 +784,15 @@ function isLiveGame(g) {
   return g.status_state === 'in_progress' || s.includes('Qtr') || s === 'In Progress' || s === 'Halftime';
 }
 
-// BDL gives the quarter in `period` (5+ = overtime) and the game clock in `time`, e.g. "3:44"
+// BDL gives the quarter in `period` (5+ = overtime) and the clock in `time`, which
+// may already carry its own quarter label ("Q3 8:53") — strip that so it isn't doubled.
 function fmtLiveClock(g) {
   const s = g.status || '';
   if (s === 'Halftime') return 'Halftime';
   const p = g.period;
   if (!p) return s === 'In Progress' ? 'Live' : s;
   const label = p <= 4 ? `Q${p}` : p === 5 ? 'OT' : `${p - 4}OT`;
-  const t = (g.time || '').trim();
+  const t = (g.time || '').trim().replace(/^(Q\d+|\d*OT)\s*/i, '');
   return /\d/.test(t) ? `${label} ${t}` : label;
 }
 
