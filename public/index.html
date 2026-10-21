@@ -77,6 +77,11 @@ input[type="date"]:focus { border-color: var(--accent); }
 /* ── Section label ── */
 .section-label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
 .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.games-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.games-head .section-label { flex: 1; margin-bottom: 0; }
+.refresh-btn { background: transparent; border: 1px solid var(--border2); color: var(--muted2); border-radius: 7px; padding: 5px 12px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; flex-shrink: 0; white-space: nowrap; }
+.refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Game Cards ── */
 .games-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
@@ -241,7 +246,7 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.54</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.55</p>
     </div>
   </header>
 
@@ -423,12 +428,14 @@ function setToday() {
   fetchGames();
 }
 
-async function fetchGames() {
+async function fetchGames({ keepAnalysis = false } = {}) {
   const btn = document.getElementById('searchBtn');
   btn.disabled = true;
   btn.textContent = 'Loading…';
-  hideAnalysis();
-  showLoading('gamesWrap', 'Fetching games…');
+  if (!keepAnalysis) {
+    hideAnalysis();
+    showLoading('gamesWrap', 'Fetching games…');
+  }
 
   let url, label;
   try {
@@ -462,6 +469,20 @@ async function fetchGames() {
   }
 }
 
+// Reload scores/clocks without closing the open analysis; re-run it if that game is (or was) live
+async function refreshGames() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Refreshing…'; }
+  const openId  = activeGameId;
+  const wasLive = openId != null && isLiveGame(games.find(g => g.id === openId) || {});
+  await fetchGames({ keepAnalysis: true });
+  if (openId == null) return;
+  const game = games.find(g => g.id === openId);
+  if (!game) return hideAnalysis();
+  if (wasLive || isLiveGame(game)) analyzeGame(openId);
+  else document.getElementById(`card-${openId}`)?.classList.add('active');
+}
+
 function renderGames(list, label) {
   currentLabel = label;
   const wrap = document.getElementById('gamesWrap');
@@ -484,7 +505,10 @@ function renderGames(list, label) {
   });
 
   wrap.innerHTML = `
-    <div class="section-label">${list.length} game${list.length !== 1 ? 's' : ''} · ${label}</div>
+    <div class="games-head">
+      <div class="section-label">${list.length} game${list.length !== 1 ? 's' : ''} · ${label}</div>
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshGames()">↻ Refresh</button>
+    </div>
     <div class="games-list" id="gamesList"></div>`;
 
   const gl = document.getElementById('gamesList');
