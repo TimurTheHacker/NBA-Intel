@@ -210,7 +210,7 @@ Ground all specific claims in the web context above.`
 
 Important: Only reference facts given above and verified web context. Do not invent player stats, team records, or historical claims you aren't certain of.`}
 
-Write in the style of a sharp, confident sports broadcaster.${predictionNote}`;
+Write in the style of a sharp, confident sports broadcaster. Never mention the web context, search results, sources, or the game data you were given — present everything as your own knowledge.${predictionNote}`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {

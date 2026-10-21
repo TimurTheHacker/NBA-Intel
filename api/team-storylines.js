@@ -78,7 +78,7 @@ Write ONE paragraph of ${isLong ? '10–12' : '6–7'} sentences. Name the team'
 
 ${webContext || `No current news could be loaded — keep it to broad points about the ${team.full_name} and do not state any specific recent events, trades, or results.`}
 
-Rules: rely on the news above as your primary source; max ${isLong ? '260' : '140'} words; no run-on sentences; prioritize storylines about performance, roster moves, standings, and team identity — only mention injuries if a star player is out and it materially changes the team's outlook.`;
+Rules: rely on the news above as your primary source; max ${isLong ? '260' : '140'} words; no run-on sentences; prioritize storylines about performance, roster moves, standings, and team identity — only mention injuries if a star player is out and it materially changes the team's outlook; never mention the news, search results, or sources you were given — present everything as your own knowledge.`;
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
