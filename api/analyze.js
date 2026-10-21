@@ -105,7 +105,7 @@ export default async function handler(req) {
     ? `Score: ${game.visitor_team.full_name} ${game.visitor_team_score} – ${game.home_team.full_name} ${game.home_team_score}`
     : 'Game has not started yet or score is unavailable.';
 
-  const isLive = game.status?.includes('Qtr') || game.status === 'In Progress' || game.status === 'Halftime';
+  const isLive = game.status_state === 'in_progress' || game.status?.includes('Qtr') || game.status === 'In Progress' || game.status === 'Halftime';
   const statusLabel =
     game.status === 'Final' || game.status === 'Final/OT' ? 'Final'
     : isLive ? `Live / In Progress (${[game.status, game.time].filter(Boolean).join(', ')})`

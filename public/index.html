@@ -241,7 +241,7 @@ select:focus { border-color: var(--accent); }
     <div class="logo-mark">🏀</div>
     <div class="logo-text">
       <h1>NBA <em>INTEL</em></h1>
-      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.52</p>
+      <p>AI-powered game summaries · Data by BallDontLie · Analysis by Claude · v1.53</p>
     </div>
   </header>
 
@@ -633,8 +633,7 @@ async function analyzeGame(gameId) {
   if (hasScores) {
     const gs = game.status || '';
     const sbarStatus = (gs === 'Final' || gs === 'Final/OT') ? gs
-      : (gs.includes('Qtr') || gs === 'Halftime') ? gs
-      : gs === 'In Progress' ? 'LIVE'
+      : isLiveGame(game) ? fmtLiveClock(game)
       : fmtGameTime(gs);
     const vScore = parseInt(game.visitor_team_score, 10);
     const hScore = parseInt(game.home_team_score, 10);
@@ -727,8 +726,7 @@ async function analyzeGame(gameId) {
       const predMatch = fullText.match(/\nPREDICTION:\s*(.+)/i);
       if (predMatch) {
         text.textContent = fullText.replace(/\n?PREDICTION:\s*.+/i, '').trim();
-        const s = game.status || '';
-        const live = s.includes('Qtr') || s === 'In Progress' || s === 'Halftime';
+        const live = isLiveGame(game);
         const chip = document.getElementById('predictionChip');
         const pill = document.createElement('span');
         pill.className = 'pred-pill';
@@ -781,15 +779,26 @@ function fmtGameTime(s) {
   return s;
 }
 
+function isLiveGame(g) {
+  const s = g.status || '';
+  return g.status_state === 'in_progress' || s.includes('Qtr') || s === 'In Progress' || s === 'Halftime';
+}
+
+// BDL gives the quarter in `period` (5+ = overtime) and the game clock in `time`, e.g. "3:44"
+function fmtLiveClock(g) {
+  const s = g.status || '';
+  if (s === 'Halftime') return 'Halftime';
+  const p = g.period;
+  if (!p) return s === 'In Progress' ? 'Live' : s;
+  const label = p <= 4 ? `Q${p}` : p === 5 ? 'OT' : `${p - 4}OT`;
+  const t = (g.time || '').trim();
+  return /\d/.test(t) ? `${label} ${t}` : label;
+}
+
 function statusInfo(g) {
   const s = g.status || '';
   if (s === 'Final' || s === 'Final/OT') return { badgeCls: 'badge-final', badgeLabel: s, detail: '' };
-  // BDL returns live status as e.g. "1st Qtr", "2nd Qtr", "Halftime", "4th Qtr 2:34", "In Progress"
-  if (s.includes('Qtr') || s === 'In Progress' || s === 'Halftime') {
-    // Use the status string itself as the badge label (it's already human-readable)
-    const liveLabel = s === 'In Progress' ? 'Live' : s;
-    return { badgeCls: 'badge-live', badgeLabel: liveLabel, detail: '' };
-  }
+  if (isLiveGame(g)) return { badgeCls: 'badge-live', badgeLabel: fmtLiveClock(g), detail: '' };
   // Scheduled — status may be ISO timestamp or pre-formatted time string
   return { badgeCls: 'badge-soon', badgeLabel: fmtGameTime(s), detail: '' };
 }
